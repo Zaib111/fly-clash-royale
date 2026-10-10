@@ -1,6 +1,6 @@
 # Fly Clash Royale
 
-A real fruit-fly brain learns to play a simplified Clash Royale, just from winning and losing against itself.
+A real fruit-fly brain learns to play Clash Royale, just from winning and losing against itself.
 
 The "brain" is the [FlyWire](https://flywire.ai) adult *Drosophila* connectome: about 134k neurons and 2.7M connections, keeping connections with at least 5 synapses. The wiring and the sign of each connection (excitatory or inhibitory) come from the real fly and never change. The model is set up like the fruit-fly chess projects ([ChessFly](https://huggingface.co/mlabonne/chessfly), [fly-chess](https://huggingface.co/cesp99/fly-chess)), but it is trained by self-play reinforcement learning, not by copying a chess engine.
 
