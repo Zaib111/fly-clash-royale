@@ -107,6 +107,11 @@ class Match:
         self.winner = None            # 0, 1, or -1 for draw
         self.done = False
         self.tower_damage_dealt = [0.0, 0.0]
+        self.events = None            # set to a list to record visual events (viewer only)
+
+    def _emit(self, *ev):
+        if self.events is not None:
+            self.events.append((self.time,) + ev)
 
     # ------------------------------------------------------------------ queries
     def hand(self, p):
@@ -158,6 +163,7 @@ class Match:
         self.elixir[p] -= card.cost
         if card.kind == "spell":
             self.spells.append(PendingSpell(p, card_id, x, y))
+            self._emit("cast", card_id, p, x, y)
         else:
             for i in range(card.count):
                 if card.count == 1:
@@ -207,6 +213,8 @@ class Match:
         if target.hp <= 0:
             target.alive = False
             target.hp = 0.0
+            self._emit("death", target.is_building, target.owner, target.x, target.y,
+                       None if target.is_building else target.card)
             if target.is_building and not target.is_king:
                 self.towers[target.owner][0].active = True
 
@@ -219,6 +227,7 @@ class Match:
                 continue
             card = CARDS[s.card]
             enemy = 1 - s.owner
+            self._emit("boom", s.card, s.x, s.y)
             for u in self.units:
                 if u.owner == enemy and u.alive and u.deploy <= 0 and \
                         math.hypot(u.x - s.x, u.y - s.y) <= card.spell_radius + u.radius:
@@ -291,6 +300,7 @@ class Match:
         if self._in_range(u, t):
             u.cooldown -= DT
             if u.cooldown <= 0:
+                self._emit("attack", u.card, u.owner, u.x, u.y, t.x, t.y)
                 self._damage(u.owner, t, c.damage)
                 u.cooldown = c.hit_speed
             return
@@ -322,6 +332,7 @@ class Match:
             return
         t.cooldown -= DT
         if t.cooldown <= 0:
+            self._emit("tower_attack", t.is_king, t.owner, t.x, t.y, tgt.x, tgt.y)
             self._damage(t.owner, tgt, t.damage)
             t.cooldown = t.hit_speed
 
