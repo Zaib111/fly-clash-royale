@@ -30,13 +30,13 @@ export class BrainView {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.01, 20);
-    this.camera.position.set(0, 0.35, 3.4);
+    this.camera.position.set(0, 0.25, 2.45);
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enablePan = false;
     this.controls.autoRotate = true;
     this.controls.autoRotateSpeed = 0.7;
     this.controls.enableDamping = true;
-    this.controls.minDistance = 1.6;
+    this.controls.minDistance = 1.2;
     this.controls.maxDistance = 6;
 
     const pos = new Float32Array(buffer, 0, count * 3);
@@ -63,7 +63,7 @@ export class BrainView {
       col.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('color', col);
       const material = new THREE.PointsMaterial({
-        size: big ? 0.045 : 0.016, map: tex, vertexColors: true, transparent: true,
+        size: big ? 0.06 : 0.024, map: tex, vertexColors: true, transparent: true,
         depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true,
       });
       const pts = new THREE.Points(geo, material);
@@ -110,6 +110,10 @@ export class BrainView {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    // back off far enough that the whole brain (about +-1 wide) fits this panel's shape
+    const halfFov = Math.tan((this.camera.fov * Math.PI) / 360);
+    const dist = Math.min(4, Math.max(1.6, 0.85 / (halfFov * this.camera.aspect), 0.62 / halfFov));
+    this.camera.position.setLength(dist);
   }
 
   setActivity(b64) {
@@ -145,6 +149,7 @@ export class BrainView {
       const f = Math.sin(t * Math.PI) * 1.4;
       pc.set([warm[0] * f, warm[1] * f, warm[2] * f], k * 3);
     });
+    this.pulseGeo.setDrawRange(0, this.pulses.length);   // don't draw idle pulse slots
     this.pulseGeo.attributes.position.needsUpdate = true;
     this.pulseGeo.attributes.color.needsUpdate = true;
     const k = Math.min(1, dt * 7);
@@ -155,12 +160,13 @@ export class BrainView {
       const idx = L.idx;
       for (let k2 = 0; k2 < idx.length; k2++) {
         const i = idx[k2];
-        const a = Math.min(1, lv[i] * 1.6);
+        const a = Math.min(1, lv[i]);
         const base = GROUP_COLORS[grp[i]];
-        const dim = 0.1;
-        arr[k2 * 3] = base[0] * (dim + a * 0.9) + HOT[0] * a * a * 0.8;
-        arr[k2 * 3 + 1] = base[1] * (dim + a * 0.9) + HOT[1] * a * a * 0.8;
-        arr[k2 * 3 + 2] = base[2] * (dim + a * 0.9) + HOT[2] * a * a * 0.8;
+        const dim = 0.06;
+        const hot = a * a * 1.3;          // strongly active neurons flare toward white-gold
+        arr[k2 * 3] = base[0] * (dim + a * 1.1) + HOT[0] * hot;
+        arr[k2 * 3 + 1] = base[1] * (dim + a * 1.1) + HOT[1] * hot;
+        arr[k2 * 3 + 2] = base[2] * (dim + a * 1.1) + HOT[2] * hot;
       }
       L.col.needsUpdate = true;
     }

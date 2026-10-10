@@ -133,6 +133,9 @@ if (brainSeat !== null) {
   $('flypanel').classList.remove('hidden');
   const buf = await (await fetch(`/api/brain/${brainSeat}`)).arrayBuffer();
   brainView = new BrainView($('brain'), buf, info.brains[brainSeat].points);
+  const toggleBig = () => { document.body.classList.toggle('brain-big'); fitCamera(); };
+  $('brain-expand').addEventListener('click', toggleBig);
+  window.addEventListener('keydown', (e) => { if (e.key === 'b' || e.key === 'B') toggleBig(); });
   $('legend').innerHTML = info.brains[brainSeat].groups.map((g, i) => {
     const c = GROUP_COLORS[i].map((v) => Math.round(v * 255)).join(',');
     return `<div><span style="background: rgb(${c})"></span>${g}</div>`;
@@ -146,9 +149,10 @@ for (const seat of flySeats) {
   fly.group.scale.setScalar(2.3);
   // hover behind its own king tower; if it's the bottom player, off to the side so it doesn't block the view
   const kingY = seat === 0 ? 3 : A.h - 3;
-  const behind = seat === 0 ? -1.6 : 1.6;
-  const home = seat === VIEW ? toLocal(A, A.w + 3.6, kingY + (seat === 0 ? 3 : -3), 5.5)
-    : toLocal(A, A.w / 2, kingY + behind, 5.2);
+  // hover just in front of its own king tower, facing the battle
+  const front = seat === 0 ? 3.6 : -3.6;
+  const home = seat === VIEW ? toLocal(A, A.w + 3.6, kingY + front, 5.5)
+    : toLocal(A, A.w / 2, kingY + front, 4.6);
   fly.group.position.copy(home);
   world.add(fly.group);
   avatars.set(seat, { ...fly, home, swoop: null, yaw: seat === 0 ? Math.PI : 0 });
@@ -610,7 +614,7 @@ function updateTowers(b, now) {
     }
     g.visible = true;
     const fl = Math.max(0, 1 - (now - tw.flashT) / 0.12);
-    flash(tw, tw.model.mats, fl * 0.5);
+    flash(tw, tw.model.mats, fl * 0.3);
     const P = tw.model.parts;
     if (tw.isKing) {
       P.eyesOpen.visible = !!active;

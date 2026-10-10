@@ -71,7 +71,10 @@ class Brain:
 
     def frame(self, agent: PolicyAgent, m, seat):
         h = agent.state[0].numpy()
-        shown = np.clip(h[self.idx] / 0.4, 0, 1)
+        vis = h[self.idx]
+        # brightness relative to this moment's most active neurons, so the active ones really glow
+        scale = max(float(np.percentile(vis, 99.5)), 0.05)
+        shown = np.clip(vis / scale, 0, 1) ** 0.8
         out = {
             "act": base64.b64encode((shown * 255).astype(np.uint8).tobytes()).decode(),
             "active": int((h > 0.05).sum()),
