@@ -5,3 +5,4 @@ pyarrow
 pygame
 pytest
 requests
+huggingface_hub   # only needed for deploy_space.py
