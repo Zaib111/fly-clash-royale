@@ -4,13 +4,11 @@ import { buildArena, toLocal } from './arena.js';
 import { makeFly, makePortrait, makeRubble, makeTower, makeUnit, TEAM } from './models.js';
 import { Effects } from './fx.js';
 import { BrainView, GROUP_COLORS } from './brain.js';
+import { connect } from './transport.js';
 
 const $ = (id) => document.getElementById(id);
-const post = (url, body) => fetch(url, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-}).then((r) => r.json());
-
-const info = await (await fetch('/api/init')).json();
+const transport = await connect();     // Python server if running, otherwise the in-browser engine
+const info = transport.info;
 const A = info.arena;
 const CARDS = info.cards;
 const VIEW = info.view;            // seat shown at the bottom (always blue)
@@ -132,7 +130,7 @@ const brainSeat = flySeats.length ? flySeats[0] : null;
 if (brainSeat !== null) {
   $('brain-section').classList.remove('hidden');
   document.querySelector('[data-tab="decision"]').classList.remove('hidden');
-  const buf = await (await fetch(`/api/brain/${brainSeat}`)).arrayBuffer();
+  const buf = await transport.brainBuffer(brainSeat);
   brainView = new BrainView($('brain'), buf, info.brains[brainSeat].points);
   const toggleBig = () => { document.body.classList.toggle('brain-big'); fitCamera(); };
   $('brain-expand').addEventListener('click', toggleBig);
@@ -207,9 +205,7 @@ let renderT = 0;
 let latest = null;
 let lastThinking = null;
 
-const stream = new EventSource('/api/stream');
-stream.onmessage = (e) => {
-  const s = JSON.parse(e.data);
+transport.onSnapshot((s) => {
   if (s.match !== matchId) resetMatch(s);
   latest = s;
   if (!snaps.length || s.tick > snaps[snaps.length - 1].tick) snaps.push(s);
@@ -228,8 +224,7 @@ stream.onmessage = (e) => {
     lastThinking = s.thinking[brainSeat];
     renderThinking(lastThinking);
   }
-};
-stream.onerror = () => { $('status').textContent = 'disconnected'; $('status').className = 'pill'; };
+}, () => { $('status').textContent = 'disconnected'; $('status').className = 'pill'; });
 
 function resetMatch(s) {
   matchId = s.match;
@@ -583,7 +578,7 @@ canvas.addEventListener('pointerup', async (e) => {
   const p = pick(e);
   if (!p) return;
   const slot = selected;
-  const res = await post('/api/play', { slot, x: p.x, y: p.y });
+  const res = await transport.play(slot, p.x, p.y);
   if (res.ok) selected = null;
   else {
     handEls[slot].classList.remove('denied');
@@ -593,9 +588,9 @@ canvas.addEventListener('pointerup', async (e) => {
 });
 function control(cmd) {
   if (!latest) return;
-  if (cmd === 'faster') post('/api/control', { cmd: 'speed', value: latest.speed * 2 });
-  else if (cmd === 'slower') post('/api/control', { cmd: 'speed', value: latest.speed / 2 });
-  else post('/api/control', { cmd });
+  if (cmd === 'faster') transport.control('speed', latest.speed * 2);
+  else if (cmd === 'slower') transport.control('speed', latest.speed / 2);
+  else transport.control(cmd);
 }
 document.querySelectorAll('#controls button').forEach((b) => b.addEventListener('click', () => control(b.dataset.cmd)));
 $('rematch').addEventListener('click', () => control('restart'));

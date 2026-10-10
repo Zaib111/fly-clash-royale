@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
+from fly.viz import GROUPS, activity_bytes, brain_points
 from game.cards import CARDS
 from game.env import DECISION_TICKS, GW, G, NUM_TROOP_TYPES, apply_action, decode_action
 from game.players import Human, PolicyAgent, make_player
@@ -39,44 +40,23 @@ def _num(v):
 class Brain:
     """Which neurons to draw in the brain panel, their 3D positions and groups."""
 
-    GROUPS = ["central brain", "eyes & optic lobes", "other senses", "descending & motor"]
+    GROUPS = GROUPS
 
     def __init__(self, agent: PolicyAgent, seed=0):
         from fly import connectome
         data = connectome.load(agent.cfg.get("subset", "full"), agent.cfg.get("threshold", 5))
         if "pos" not in data:
             raise SystemExit("connectome cache has no neuron positions: rerun `python -m fly.connectome`")
-        n = data["n"]
-        sc = np.array(data["super_class"])
-        group = np.zeros(n, dtype=np.uint8)
-        group[np.isin(sc, ["optic", "visual_projection", "visual_centrifugal"])] = 1
-        group[data["eye_idx"].numpy()] = 1
-        group[data["sense_idx"].numpy()] = 2
-        group[data["read_idx"].numpy()] = 3
-        must = np.unique(np.concatenate([data["read_idx"].numpy(), data["sense_idx"].numpy()]))
-        rest = np.setdiff1d(np.arange(n), must)
-        rng = np.random.default_rng(seed)
-        k = max(0, min(len(rest), BRAIN_POINTS - len(must)))
-        self.idx = np.sort(np.concatenate([must, rng.choice(rest, k, replace=False)]))
-        pos = data["pos"].numpy()[self.idx].astype(np.float64) * np.array([4.0, 4.0, 40.0])  # voxels -> nm
-        pos -= pos.mean(0)
-        pos /= np.abs(pos).max()
-        # three.js axes: x = lateral, y = up (FlyWire y points ventral), z = toward the viewer
-        self.pos = np.stack([pos[:, 0], -pos[:, 1], -pos[:, 2]], 1).astype(np.float32)
-        self.group = group[self.idx]
+        self.idx, self.pos, self.group = brain_points(data, BRAIN_POINTS, seed)
         self.read_idx = data["read_idx"].numpy()
-        self.n = n
+        self.n = data["n"]
         self.n_edges = int(len(data["syn"]))
         self.n_syn = int(data["syn"].sum())
 
     def frame(self, agent: PolicyAgent, m, seat):
         h = agent.state[0].numpy()
-        vis = h[self.idx]
-        # brightness relative to this moment's most active neurons, so the active ones really glow
-        scale = max(float(np.percentile(vis, 99.5)), 0.05)
-        shown = np.clip(vis / scale, 0, 1) ** 0.8
         out = {
-            "act": base64.b64encode((shown * 255).astype(np.uint8).tobytes()).decode(),
+            "act": base64.b64encode(activity_bytes(h[self.idx]).tobytes()).decode(),
             "active": int((h > 0.05).sum()),
             "active_out": int((h[self.read_idx] > 0.05).sum()),
             "mean": _num(h.mean()),

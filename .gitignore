@@ -6,3 +6,4 @@ data/raw/
 data/*.pt
 runs/
 .DS_Store
+web/model/

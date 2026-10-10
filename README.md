@@ -57,6 +57,15 @@ The side panel shows the fly's brain lighting up as a wave, from the eyes throug
 
 Controls: click a card (or press 1–4), then click your half of the arena. Drag to orbit, scroll to zoom, double-click to reset the view. Space pauses, +/- changes speed and R starts a rematch. three.js r160 is vendored in `web/vendor/` (MIT), so no internet connection is needed.
 
+**In the browser, no Python.** The game, the bots and the fly brain are also ported to JavaScript (`web/js/engine/`), so the whole thing can run as a static website. Export a trained fly, then serve `web/`:
+
+```bash
+.venv/bin/python export_web.py runs/fly1/latest.pt      # writes web/model/ (~17 MB)
+cd web && python3 -m http.server 8000                   # open http://127.0.0.1:8000
+```
+
+The page shows a start menu: play the fly, watch it against a bot or itself, or play the bot. `tests/test_js_parity.py` checks that the JavaScript game plays move-for-move like the Python one, and that the JavaScript brain makes the same decisions as PyTorch.
+
 **2D viewer (pygame).**
 
 ```bash

@@ -130,6 +130,22 @@
       </section>
     </aside>
   </main>
+  <div id="menu" class="overlay hidden">
+    <div class="menu-card">
+      <div class="menu-fly">🪰</div>
+      <h1>Clash Royale vs. a <span>Fruit Fly</span></h1>
+      <p>A simulation of a real fruit fly's brain (134,181 neurons, wired exactly like the real one) learned to play
+        Clash Royale by playing against itself. It runs entirely in your browser.</p>
+      <div class="menu-buttons">
+        <button data-p1="human" data-p2="fly" class="primary">Play against the fly</button>
+        <button data-p1="scripted" data-p2="fly">Watch the fly vs. a bot</button>
+        <button data-p1="fly" data-p2="fly">Watch the fly vs. itself</button>
+        <button data-p1="human" data-p2="scripted">Play the bot (no fly)</button>
+      </div>
+      <p class="menu-note">The fly's brain is a ~17 MB download. Desktop browser recommended.</p>
+    </div>
+  </div>
+  <div id="loading" class="overlay hidden"><div class="menu-card"><div class="menu-fly spin">🪰</div><p id="loading-text">Starting…</p></div></div>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

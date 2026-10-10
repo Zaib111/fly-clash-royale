@@ -220,3 +220,20 @@ body.brain-big #legend { font-size: 13px; }
 #winbar-bot-n { bottom: 0; }
 #winbar-top { position: absolute; inset: 0; border-radius: 6px; background: var(--red); }
 #winbar-fill { border-radius: 0 0 6px 6px; }
+
+/* ---- start menu / loading (browser-only mode) ---- */
+.overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgba(40, 30, 70, 0.92), rgba(8, 8, 14, 0.97)); }
+.menu-card { max-width: 520px; padding: 32px; text-align: center; }
+.menu-card h1 { margin: 8px 0 12px; font-size: 28px; }
+.menu-card h1 span { color: var(--accent); }
+.menu-card p { color: #c9c9d8; line-height: 1.55; font-size: 14px; }
+.menu-fly { font-size: 54px; }
+.menu-fly.spin { animation: hover 1.2s ease-in-out infinite alternate; }
+@keyframes hover { from { transform: translateY(-6px) rotate(-6deg); } to { transform: translateY(6px) rotate(6deg); } }
+.menu-buttons { display: grid; gap: 10px; margin: 22px 0 14px; }
+.menu-buttons button { font: inherit; font-size: 15px; padding: 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #3a3a52; background: #1d1d2a; color: var(--text); }
+.menu-buttons button:hover { background: #2a2a3d; }
+.menu-buttons button.primary { background: linear-gradient(#ffb066, #f07a28); border: none; color: #1a0f05; font-weight: 700; }
+.menu-note { font-size: 12px !important; color: var(--muted) !important; }
