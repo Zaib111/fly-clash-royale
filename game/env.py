@@ -13,7 +13,7 @@ Action (discrete, A = 1 + 4 * GH * GW):
 import numpy as np
 
 from .cards import CARDS, NUM_CARDS, TROOP_IDS
-from .sim import HEIGHT, MATCH_SECONDS, Match, TICKS_PER_SEC
+from .sim import HEIGHT, MATCH_SECONDS, OWN_SIDE_END, POCKET_END, RIVER_HI, TICKS_PER_SEC, WIDTH, Match
 
 GW, GH = 9, 16
 CELL = 2.0
@@ -21,6 +21,20 @@ G = GW * GH
 NUM_ACTIONS = 1 + 4 * G
 DECISION_TICKS = TICKS_PER_SEC // 2          # decide every 0.5s
 TROOP_ROWS = 7                               # own-perspective rows where troops may land
+
+
+def _cells(pred):
+    """Bool mask over the G cells (own perspective) whose centre satisfies pred(x, own_y)."""
+    out = np.zeros(G, dtype=bool)
+    for cy in range(GH):
+        for cx in range(GW):
+            out[cy * GW + cx] = pred(cx * CELL + CELL / 2, cy * CELL + CELL / 2)
+    return out
+
+
+OWN_CELLS = _cells(lambda x, y: y < OWN_SIDE_END)
+POCKET_CELLS = (_cells(lambda x, y: RIVER_HI <= y < POCKET_END and x < WIDTH / 2),
+                _cells(lambda x, y: RIVER_HI <= y < POCKET_END and x >= WIDTH / 2))
 _TROOP_PLANE = {cid: i for i, cid in enumerate(TROOP_IDS)}
 NT = len(TROOP_IDS)
 NUM_TROOP_TYPES = NT
@@ -72,15 +86,16 @@ def action_mask(m: Match, p, out=None):
     mask[0] = True
     if m.done:
         return mask
+    troop_cells = OWN_CELLS
+    left, right = m.pockets(p)
+    if left or right:
+        troop_cells = troop_cells | (POCKET_CELLS[0] & left) | (POCKET_CELLS[1] & right)
     for s, cid in enumerate(m.hand(p)):
         card = CARDS[cid]
         if m.elixir[p] < card.cost:
             continue
         base = 1 + s * G
-        if card.kind == "spell":
-            mask[base:base + G] = True
-        else:
-            mask[base:base + TROOP_ROWS * GW] = True
+        mask[base:base + G] = True if card.kind == "spell" else troop_cells
     return mask
 
 

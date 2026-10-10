@@ -130,3 +130,37 @@ def test_vecenv_zero_sum_and_autoreset():
             assert all(not m.done for m in env.matches)
             return
     pytest.fail("no match finished")
+
+
+def test_pocket_opens_after_princess_tower_falls():
+    """Destroying an enemy princess tower lets you deploy in that lane on their side."""
+    m = Match(seed=0)
+    m.elixir[0] = 10
+    m.cycle[0][0] = CARD_INDEX["Knight"]
+    assert not m.can_play(0, 0, 3.5, 20.0)                 # enemy side, tower still up
+    m._damage(0, m.towers[1][1], 1e9)                       # destroy their left princess tower
+    assert m.can_play(0, 0, 3.5, 20.0)                      # left pocket now open
+    assert not m.can_play(0, 0, 14.5, 20.0)                 # right lane still closed
+    assert not m.can_play(0, 0, 3.5, 26.0)                  # not past the pocket, up by the king
+    assert not m.can_play(0, 0, 3.5, 16.0)                  # not in the river
+    # mirrored for player 1
+    m.elixir[1] = 10
+    m.cycle[1][0] = CARD_INDEX["Knight"]
+    m._damage(1, m.towers[0][2], 1e9)                       # player 1 takes player 0's right tower
+    assert m.can_play(1, 0, 14.5, HEIGHT - 20.0)
+    assert not m.can_play(1, 0, 3.5, HEIGHT - 20.0)
+
+
+def test_action_mask_includes_pocket_cells():
+    m = Match(seed=0)
+    m.elixir[0] = 10
+    m.cycle[0][:4] = [CARD_INDEX[n] for n in ("Knight", "Archers", "Giant", "Goblins")]
+    before = action_mask(m, 0)[1:1 + G].copy()
+    m._damage(0, m.towers[1][2], 1e9)                       # their right princess tower
+    after = action_mask(m, 0)[1:1 + G]
+    opened = np.flatnonzero(after & ~before)
+    assert len(opened) > 0
+    for cell in opened:                                     # every new cell is a legal pocket spot
+        cy, cx = divmod(cell, GW)
+        assert m.can_deploy_troop(0, cx * 2 + 1, cy * 2 + 1)
+        assert cx * 2 + 1 >= 9

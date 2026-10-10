@@ -25,7 +25,7 @@ import numpy as np
 from game.cards import CARDS
 from game.env import DECISION_TICKS, GW, G, NUM_TROOP_TYPES, apply_action, decode_action
 from game.players import Human, PolicyAgent, make_player
-from game.sim import BRIDGES, DT, HEIGHT, RIVER_HI, RIVER_LO, WIDTH, Match
+from game.sim import BRIDGES, DT, HEIGHT, OWN_SIDE_END, POCKET_END, RIVER_HI, RIVER_LO, WIDTH, Match
 
 WEB = Path(__file__).resolve().parent / "web"
 BRAIN_POINTS = 60_000
@@ -133,7 +133,7 @@ class Game:
     def init_info(self):
         info = {
             "arena": {"w": WIDTH, "h": HEIGHT, "river": [RIVER_LO, RIVER_HI], "bridges": list(BRIDGES),
-                      "troop_limit": 14.0, "dt": DT},
+                      "troop_limit": OWN_SIDE_END, "pocket_end": POCKET_END, "dt": DT},
             "cards": [{"name": c.name, "cost": c.cost, "kind": c.kind, "radius": c.radius,
                        "is_air": c.is_air, "count": c.count, "spell_radius": c.spell_radius,
                        "range": c.range} for c in CARDS],
@@ -166,6 +166,7 @@ class Game:
             "time_left": _num(m.time_left()), "double": m.double_elixir(), "done": m.done,
             "winner": m.winner, "events": ev, "brains": brain_frames,
             "thinking": self.thinking, "decisions": self.decisions,
+            "pockets": [list(m.pockets(0)), list(m.pockets(1))],
         }
 
     def broadcast(self, msg):

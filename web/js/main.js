@@ -469,10 +469,20 @@ function flashState(text, cls, ms = 220) {
 let selected = null;
 const canPlay = HUMAN !== null && HUMAN === VIEW;
 const ghosts = {};
-const zone = new THREE.Mesh(new THREE.PlaneGeometry(A.w, A.h - 14),
-  new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.16, depthWrite: false }));
-zone.rotation.x = -Math.PI / 2;
-zone.position.copy(HUMAN === 1 ? toLocal(A, A.w / 2, (A.h - 14) / 2, 0.07) : toLocal(A, A.w / 2, 14 + (A.h - 14) / 2, 0.07));
+// red "can't deploy" tint: enemy side minus any pocket the human has opened
+const zone = new THREE.Group();
+const zoneMat = new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.16, depthWrite: false });
+const ownY = (y) => (HUMAN === 1 ? A.h - y : y);   // own-perspective y -> world y
+function zonePiece(x0, x1, y0, y1) {               // own-perspective box
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), zoneMat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.copy(toLocal(A, (x0 + x1) / 2, ownY((y0 + y1) / 2), 0.07));
+  zone.add(m);
+  return m;
+}
+zonePiece(0, A.w, A.troop_limit, A.river[1]);
+zonePiece(0, A.w, A.pocket_end, A.h);
+const pocketPieces = [zonePiece(0, A.w / 2, A.river[1], A.pocket_end), zonePiece(A.w / 2, A.w, A.river[1], A.pocket_end)];
 zone.visible = false;
 world.add(zone);
 const spellRing = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 48),
@@ -489,7 +499,10 @@ function selectSlot(i) {
 function legal(c, x, y) {
   if (x < 0 || x >= A.w || y < 0 || y >= A.h) return false;
   if (c.kind === 'spell') return true;
-  return HUMAN === 0 ? y < A.troop_limit : y > A.h - A.troop_limit;
+  const own = HUMAN === 0 ? y : A.h - y;
+  if (own < A.troop_limit) return true;
+  const open = latest && latest.pockets ? latest.pockets[HUMAN] : [false, false];
+  return own >= A.river[1] && own < A.pocket_end && (x < A.w / 2 ? open[0] : open[1]);
 }
 const ray = new THREE.Raycaster();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -544,6 +557,8 @@ function updateGhost(hand, elixir) {
   if (!canPlay || selected === null) return;
   const c = CARDS[hand[selected]];
   zone.visible = c.kind === 'troop';
+  const open = latest && latest.pockets ? latest.pockets[HUMAN] : [false, false];
+  pocketPieces.forEach((p, i) => { p.visible = !open[i]; });
   if (!hover) return;
   const ok = legal(c, hover.x, hover.y) && elixir >= c.cost;
   if (c.kind === 'spell') {

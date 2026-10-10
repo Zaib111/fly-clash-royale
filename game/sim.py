@@ -16,6 +16,8 @@ BRIDGES = (3.5, 14.5)
 TICKS_PER_SEC = 10
 DT = 1.0 / TICKS_PER_SEC
 MATCH_SECONDS = 180.0
+OWN_SIDE_END = 14.0        # troops deploy at own-side y < 14 (y measured from your own back wall)
+POCKET_END = 25.0          # a destroyed enemy princess tower opens its lane up to here
 DOUBLE_ELIXIR_AT = 120.0   # last 60s
 
 
@@ -135,11 +137,22 @@ class Match:
     def time_left(self):
         return max(0.0, MATCH_SECONDS - self.time)
 
-    @staticmethod
-    def can_deploy_troop(p, x, y):
-        if not (0 <= x < WIDTH):
+    def pockets(self, p):
+        """(left_open, right_open): lanes on the enemy side where p may deploy because that
+        enemy princess tower is destroyed (towers are [king, left, right] by world x)."""
+        enemy = self.towers[1 - p]
+        return (not enemy[1].alive, not enemy[2].alive)
+
+    def can_deploy_troop(self, p, x, y):
+        if not (0 <= x < WIDTH and 0 <= y < HEIGHT):
             return False
-        return 0 <= y < 14.0 if p == 0 else HEIGHT - 14.0 < y < HEIGHT
+        own_y = y if p == 0 else HEIGHT - y
+        if own_y < OWN_SIDE_END:
+            return True
+        if RIVER_HI <= own_y < POCKET_END:
+            left, right = self.pockets(p)
+            return left if x < WIDTH / 2 else right
+        return False
 
     def can_play(self, p, slot, x, y):
         if self.done or not (0 <= slot < 4):

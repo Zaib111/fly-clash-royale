@@ -171,6 +171,7 @@ def main():
     opt = torch.optim.Adam(list(policy.parameters()) + list(critic.parameters()), lr=args.lr)
     pool = Pool(args.pool_size)
     it0 = 0
+    minutes_before = 0.0          # training time from earlier sessions of this run (for the log)
     if args.resume and (run / "latest.pt").exists():
         ck = torch.load(run / "latest.pt", weights_only=False)
         load_params(policy, ck["params"])
@@ -178,7 +179,11 @@ def main():
         opt.load_state_dict(ck["opt"])
         pool.__dict__.update(ck["pool"])
         it0 = ck["iter"] + 1
-        print(f"resumed from iteration {it0}")
+        with open(run / "log.csv") as f:
+            rows = [r for r in csv.DictReader(f) if r.get("iter") not in (None, "iter")]
+        if rows:
+            minutes_before = float(rows[-1]["minutes"])
+        print(f"resumed from iteration {it0} ({minutes_before:.0f} min trained so far)")
     else:
         pool.add(params_of(policy))
     n_params = sum(p.numel() for p in policy.parameters())
@@ -350,7 +355,7 @@ def main():
             print(f"  eval vs random W/D/L {wr} | vs scripted W/D/L {ws}")
         st = np.mean(stats, 0) if stats else [0, 0, 0, 0]
         play_rate = (b_act[b_valid] != 0).float().mean().item()
-        mins = (time.time() - t_start) / 60
+        mins = minutes_before + (time.time() - t_start) / 60
         mlen = np.mean(match_lens[-50:]) if match_lens else 0
         pwr = np.mean(results[-100:]) if results else 0.5
         log.writerow([it, f"{mins:.2f}", total_samples, f"{samples / (roll_time + upd_time):.1f}",
