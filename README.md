@@ -73,6 +73,9 @@ Controls: click a card (or press 1–4), then click the arena. Space pauses, +/-
 .venv/bin/python -m pytest -q tests
 ```
 
-## License / data
+## License
 
-FlyWire connectome data: CC BY-NC 4.0, from Dorkenwald et al. 2024, Schlegel et al. 2024 and Shiu et al. 2024 (*Nature*). Anything derived from it, including trained fly checkpoints, is **non-commercial only**.
+- **Code:** MIT, see [LICENSE](LICENSE). The bundled three.js (`web/vendor/`) is also MIT.
+- **FlyWire connectome data:** CC BY-NC 4.0, from Dorkenwald et al. 2024, Schlegel et al. 2024 and Shiu et al. 2024 (*Nature*). The data isn't included in this repo; `data/fetch_connectome.py` downloads it. Anything derived from it, including trained fly checkpoints, is **non-commercial only**.
+
+This is an unofficial fan project and is not affiliated with, endorsed by, or connected to Supercell. "Clash Royale" is a trademark of Supercell. No Supercell art or assets are used: every visual is drawn from scratch in code.
