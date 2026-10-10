@@ -9,7 +9,7 @@ Produces data/connectome_<subset>_t<threshold>.pt with:
   eye_idx, eye_cell              "photoreceptor" input neurons and the arena cell each one sees
   sense_idx                      other sensory neurons (receive the non-spatial observation vector)
   read_idx                       descending + motor neurons (the fly's "decision" output)
-  super_class, root_id           per-neuron labels
+  super_class, root_id, pos      per-neuron labels; pos in FlyWire voxels (4 x 4 x 40 nm)
 
 FlyWire data is CC BY-NC 4.0 (non-commercial use only).
 """
@@ -123,6 +123,7 @@ def build(threshold=5, subset="full", gw=9, gh=16):
         sense_idx=torch.from_numpy(np.flatnonzero(sense_mask)),
         read_idx=torch.from_numpy(np.flatnonzero(read_mask)),
         super_class=list(sc), root_id=torch.from_numpy(a.index.values.astype(np.int64)),
+        pos=torch.from_numpy(np.nan_to_num(pos, nan=np.nanmean(pos, 0)[None].repeat(len(pos), 0)).astype(np.float32)),
     )
     return out
 

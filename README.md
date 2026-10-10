@@ -39,6 +39,18 @@ Progress prints every iteration and is written to `runs/<name>/log.csv`. The col
 
 ## Watch / play
 
+**3D viewer (recommended).** It opens in your browser and the match runs here in Python. The page draws the arena in 3D, shows the fly hovering over its King tower, and displays its brain as a live point cloud of real neuron positions:
+
+```bash
+.venv/bin/python play3d.py --p1 runs/fly1/latest.pt --p2 human     # you vs the fly
+.venv/bin/python play3d.py --p1 scripted --p2 runs/fly1/latest.pt  # watch the fly play the bot
+.venv/bin/python play3d.py --p1 human --p2 scripted                # no fly needed
+```
+
+Controls: click a card (or press 1–4), then click your half of the arena. Drag to orbit, scroll to zoom, double-click to reset the view. Space pauses, +/- changes speed and R starts a rematch. three.js r160 is vendored in `web/vendor/` (MIT), so no internet connection is needed.
+
+**2D viewer (pygame).**
+
 ```bash
 .venv/bin/python play.py                                         # scripted vs random
 .venv/bin/python play.py --p1 runs/fly1/latest.pt --p2 scripted  # fly vs bot, with live neuron panel

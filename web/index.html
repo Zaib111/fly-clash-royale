@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fly Clash Royale</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%AA%B0%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/" } }
+  </script>
+</head>
+<body>
+  <header id="topbar">
+    <div class="title">Clash Royale vs. a <span>Fruit Fly</span></div>
+    <div id="subtitle"></div>
+    <div id="status" class="pill">connecting…</div>
+  </header>
+  <main>
+    <section id="game">
+      <canvas id="arena"></canvas>
+      <div id="labels"></div>
+
+      <div id="hud-top">
+        <div id="opp" class="banner red"><span id="opp-name"></span></div>
+        <div id="timer"><small>Time left:</small><b id="time">3:00</b></div>
+        <div id="x2" class="hidden"><b>x2</b></div>
+      </div>
+      <div id="crowns">
+        <div class="crownbox red"><div class="crown"></div><b id="crowns-top">0</b></div>
+        <div class="crownbox blue"><div class="crown"></div><b id="crowns-bottom">0</b></div>
+      </div>
+
+      <div id="hud-bottom">
+        <div id="next"><small>Next:</small><div id="next-card" class="card small"></div></div>
+        <div id="hand"></div>
+        <div id="elixir-row">
+          <div class="drop"><b id="elixir-n">5</b></div>
+          <div id="elixir-bar"></div>
+          <div id="me" class="banner blue"><span id="me-name"></span></div>
+        </div>
+      </div>
+
+      <div id="controls">
+        <button data-cmd="pause" title="Pause (space)">⏯</button>
+        <button data-cmd="slower" title="Slower (-)">−</button>
+        <span id="speed">1x</span>
+        <button data-cmd="faster" title="Faster (+)">+</button>
+        <button data-cmd="restart" title="Restart (R)">↻</button>
+      </div>
+      <div id="hint">drag to orbit · scroll to zoom · double-click to reset view</div>
+
+      <div id="result" class="hidden">
+        <div class="result-card">
+          <div id="result-title"></div>
+          <div id="result-crowns"></div>
+          <button id="rematch">Rematch</button>
+        </div>
+      </div>
+    </section>
+
+    <aside id="flypanel" class="hidden">
+      <div class="panel-head">
+        <div class="panel-title">THE FLY'S BRAIN</div>
+        <div id="fly-state" class="pill small">idle</div>
+      </div>
+      <div id="brain-wrap">
+        <canvas id="brain"></canvas>
+        <div id="legend"></div>
+      </div>
+      <div id="stats"></div>
+      <div id="thinking">
+        <h4>WHAT IT'S CONSIDERING</h4>
+        <ol id="think-list"></ol>
+      </div>
+      <p class="note">
+        Every half-second of game time, the arena is projected onto the fly's photoreceptors and
+        signals spread through the real FlyWire wiring. The descending &amp; motor neurons (pink) are
+        read out as the fly's choice. Brighter = more active.
+      </p>
+    </aside>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

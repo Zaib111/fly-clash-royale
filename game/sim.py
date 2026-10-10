@@ -43,7 +43,7 @@ class Tower:
 
 class Unit:
     __slots__ = ("owner", "card", "x", "y", "hp", "max_hp", "deploy", "cooldown", "target",
-                 "alive")
+                 "alive", "uid")
 
     is_building = False
 
@@ -55,6 +55,7 @@ class Unit:
         self.cooldown = 0.0
         self.target = None
         self.alive = True
+        self.uid = 0
 
     @property
     def stats(self):
@@ -108,6 +109,7 @@ class Match:
         self.done = False
         self.tower_damage_dealt = [0.0, 0.0]
         self.events = None            # set to a list to record visual events (viewer only)
+        self._next_uid = 1
 
     def _emit(self, *ev):
         if self.events is not None:
@@ -161,6 +163,7 @@ class Match:
         cyc.append(card_id)
         card = CARDS[card_id]
         self.elixir[p] -= card.cost
+        self._emit("play", card_id, p, x, y)
         if card.kind == "spell":
             self.spells.append(PendingSpell(p, card_id, x, y))
             self._emit("cast", card_id, p, x, y)
@@ -172,7 +175,10 @@ class Match:
                     ang = 2 * math.pi * i / card.count
                     ox, oy = 0.6 * math.cos(ang), 0.6 * math.sin(ang)
                 ux = min(max(x + ox, 0.3), WIDTH - 0.3)
-                self.units.append(Unit(p, card_id, ux, y + oy))
+                u = Unit(p, card_id, ux, y + oy)
+                u.uid = self._next_uid
+                self._next_uid += 1
+                self.units.append(u)
         return True
 
     # ------------------------------------------------------------------ simulation
@@ -300,7 +306,7 @@ class Match:
         if self._in_range(u, t):
             u.cooldown -= DT
             if u.cooldown <= 0:
-                self._emit("attack", u.card, u.owner, u.x, u.y, t.x, t.y)
+                self._emit("attack", u.card, u.owner, u.x, u.y, t.x, t.y, u.uid)
                 self._damage(u.owner, t, c.damage)
                 u.cooldown = c.hit_speed
             return

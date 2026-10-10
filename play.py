@@ -12,15 +12,13 @@ Human controls: click a card (or press 1-4), then click the arena. Space pauses,
 import argparse
 import math
 import os
-import sys
 
 import numpy as np
 import pygame
-import torch
 
-from game.bots import RandomBot, ScriptedBot
 from game.cards import CARDS, MAX_ELIXIR
-from game.env import DECISION_TICKS, action_mask, apply_action, observe
+from game.env import DECISION_TICKS, apply_action
+from game.players import Human, PolicyAgent, make_player
 from game.sim import DT, HEIGHT, TICKS_PER_SEC, WIDTH, Match
 from ui import art
 from ui.scene import Arena, Effects
@@ -34,61 +32,6 @@ WIN_W = AW + 2 * MARGIN
 WIN_H = HEADER + AH + FOOTER
 PANEL = 290
 BG = (34, 28, 48)
-
-
-class PolicyAgent:
-    def __init__(self, path):
-        from fly.brain import set_threads
-        from fly.policies import load_checkpoint
-        set_threads(2)
-        self.policy, ck = load_checkpoint(path)
-        self.is_fly = ck["cfg"]["policy"] == "fly"
-        run = os.path.basename(os.path.dirname(os.path.abspath(path)))
-        self.name = f"{'Fly' if self.is_fly else 'MLP'} ({run})"
-        self.reset()
-
-    def reset(self):
-        self.state = self.policy.initial_state(1)
-        self.activity = None
-
-    @torch.no_grad()
-    def act(self, m, p):
-        sp, vec = observe(m, p)
-        mask = action_mask(m, p)
-        logits, self.state = self.policy(torch.from_numpy(sp)[None], torch.from_numpy(vec)[None],
-                                         torch.from_numpy(mask)[None], self.state)
-        if self.is_fly:
-            self.activity = self.state[0, self.policy.read_idx].numpy()
-        return int(torch.distributions.Categorical(logits=logits).sample())
-
-
-class Human:
-    name = "You"
-
-    def __init__(self):
-        self.selected = None
-
-    def reset(self):
-        self.selected = None
-
-    def act(self, m, p):
-        return 0   # humans play through clicks, not on the decision clock
-
-
-def make_player(spec, seed):
-    if spec == "human":
-        return Human()
-    if spec == "random":
-        b = RandomBot(seed=seed)
-        b.name = "Random Bot"
-        return b
-    if spec == "scripted":
-        b = ScriptedBot(seed=seed)
-        b.name = "Scripted Bot"
-        return b
-    if spec.endswith(".pt"):
-        return PolicyAgent(spec)
-    sys.exit(f"unknown player {spec!r}")
 
 
 class Viewer:

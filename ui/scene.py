@@ -114,7 +114,7 @@ class Effects:
         for ev in events:
             t0, kind = ev[0], ev[1]
             if kind == "attack":
-                _, _, card, owner, x, y, tx, ty = ev
+                _, _, card, owner, x, y, tx, ty = ev[:8]
                 c = CARDS[card]
                 if c.range > 1.5:
                     style = {"Archers": "arrow", "Musketeer": "bullet", "Minions": "orb"}.get(c.name, "orb")
