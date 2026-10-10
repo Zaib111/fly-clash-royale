@@ -144,7 +144,12 @@ def main():
     ap.add_argument("--minutes", type=float, default=60)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--threads", type=int, default=None,
+                    help="CPU cores to use (default: all); lower it to keep your machine usable")
     args = ap.parse_args()
+    if args.threads:
+        from fly.brain import set_threads
+        set_threads(args.threads)
 
     fly = args.policy == "fly"
     args.envs = args.envs or (32 if fly else 64)

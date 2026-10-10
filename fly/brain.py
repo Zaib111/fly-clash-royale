@@ -24,6 +24,13 @@ from game.env import C, G, NUM_ACTIONS, V
 _POOL = ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 4)))
 
 
+def set_threads(n):
+    """Limit CPU cores used by the brain (sparse worker threads + torch intra-op)."""
+    global _POOL
+    _POOL = ThreadPoolExecutor(max_workers=max(1, n))
+    torch.set_num_threads(max(1, n))
+
+
 class _Blocks:
     """CSR matrix split into row blocks with ~equal nnz, multiplied in parallel threads
     (torch releases the GIL inside sparse kernels)."""
@@ -43,6 +50,7 @@ class _Blocks:
     def mm(self, vals, x):
         """(W with `vals`) @ x for x of shape (n, B)."""
         out = torch.empty(self.n, x.shape[1], dtype=x.dtype)
+        vals, x = vals.detach(), x.detach()   # grad mode is thread-local; _SpMM handles grads
 
         def run(blk):
             a, b, s, e, crow, col = blk
@@ -130,10 +138,11 @@ class FlyBrain(nn.Module):
         return torch.zeros(batch, self.n)
 
     def edge_weights(self):
-        w = self.w0 * self.log_scale.exp()
+        # the global scale is applied per neuron in think(), so in "neuron" mode the edge
+        # values need no gradient (per-edge gradients are the expensive part)
         if self.gains == "synapse":
-            return w * self.log_gain.exp()
-        return w
+            return self.w0 * self.log_gain.exp()
+        return self.w0
 
     def encode(self, spatial, vector):
         """Observation -> input current per neuron, shape (n, B)."""
@@ -152,23 +161,21 @@ class FlyBrain(nn.Module):
         a = self.leak
         ub = u + self.bias[:, None]
         neuron = self.gains == "neuron"
+        g_post = self.log_scale.exp()
         if neuron:
             g_pre = self.log_gain_pre.exp()[:, None]
-            g_post = self.log_gain_post.exp()[:, None]
+            g_post = g_post * self.log_gain_post.exp()[:, None]
         if not torch.is_grad_enabled():
             # in-place fast path for rollouts
             h = h.clone()
             for _ in range(self.steps):
                 rec = self.graph.fwd.mm(vals, h * g_pre if neuron else h)
-                if neuron:
-                    rec.mul_(g_post)
+                rec.mul_(g_post)
                 rec.add_(ub).relu_().tanh_()
                 h.mul_(1 - a).add_(rec, alpha=a)
             return h
         for _ in range(self.steps):
-            rec = self.graph.mm(vals, h * g_pre if neuron else h)
-            if neuron:
-                rec = rec * g_post
+            rec = self.graph.mm(vals, h * g_pre if neuron else h) * g_post
             h = (1 - a) * h + a * torch.tanh(torch.relu(rec + ub))
         return h
 
