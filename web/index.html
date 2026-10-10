@@ -19,6 +19,10 @@
   <main>
     <section id="game">
       <canvas id="arena"></canvas>
+      <div id="winbar" class="hidden" title="Who's winning (the fly's value network)">
+        <div id="winbar-top"></div><div id="winbar-fill"></div>
+        <b id="winbar-top-n"></b><b id="winbar-bot-n"></b>
+      </div>
       <div id="labels"></div>
 
       <div id="hud-top">
@@ -59,43 +63,71 @@
       </div>
     </section>
 
-    <aside id="flypanel" class="hidden">
-      <div class="panel-head">
-        <div class="panel-title">THE FLY'S BRAIN</div>
-        <div id="fly-state" class="pill small">idle</div>
-      </div>
-      <div id="brain-wrap">
-        <canvas id="brain"></canvas>
-        <button id="brain-expand" title="Expand the brain (B)">⤢</button>
-        <div id="legend"></div>
-      </div>
-      <div id="stats"></div>
-      <div id="decision">
-        <div class="vision-col">
-          <h4>WHAT IT SEES</h4>
-          <canvas id="vision" width="360" height="640"></canvas>
-          <div class="vision-key">
-            <span><i style="background:#47c6ff"></i>its troops</span>
-            <span><i style="background:#ff7a45"></i>enemy</span>
-            <span><i class="ring"></i>where it wants to play</span>
+    <aside id="flypanel">
+      <section id="brain-section" class="hidden">
+        <div class="panel-head">
+          <div class="panel-title">THE FLY'S BRAIN</div>
+          <div id="fly-state" class="pill small">idle</div>
+        </div>
+        <div id="brain-wrap">
+          <canvas id="brain"></canvas>
+          <button id="brain-expand" title="Expand the brain (B)">⤢</button>
+          <div id="legend"></div>
+        </div>
+        <div id="stats"></div>
+      </section>
+
+      <nav id="tabs">
+        <button data-tab="decision" class="hidden">Decision</button>
+        <button data-tab="moves">Moves</button>
+        <button data-tab="about">About</button>
+      </nav>
+
+      <section class="tab" id="tab-decision">
+        <div id="decision">
+          <div class="vision-col">
+            <h4>WHAT IT SEES</h4>
+            <canvas id="vision" width="360" height="640"></canvas>
+            <div class="vision-key">
+              <span><i style="background:#47c6ff"></i>its troops</span>
+              <span><i style="background:#ff7a45"></i>enemy</span>
+              <span><i class="ring"></i>where it wants to play</span>
+            </div>
+          </div>
+          <div class="hand-col">
+            <h4>ITS HAND</h4>
+            <div id="fly-hand"></div>
+            <div id="fly-wait" class="pick"><div class="bar"><i></i></div><span>Wait</span><em>–</em></div>
+            <div id="fly-elixir"></div>
           </div>
         </div>
-        <div class="hand-col">
-          <h4>ITS HAND</h4>
-          <div id="fly-hand"></div>
-          <div id="fly-wait" class="pick"><div class="bar"><i></i></div><span>Wait</span><em>–</em></div>
-          <div id="fly-elixir"></div>
+        <div id="thinking">
+          <h4>WHAT IT'S CONSIDERING</h4>
+          <ol id="think-list"></ol>
         </div>
-      </div>
-      <div id="thinking">
-        <h4>WHAT IT'S CONSIDERING</h4>
-        <ol id="think-list"></ol>
-      </div>
-      <p class="note">
-        Every half-second of game time, the arena is projected onto the fly's photoreceptors and
-        signals spread through the real FlyWire wiring. The descending &amp; motor neurons (pink) are
-        read out as the fly's choice. Brighter = more active.
-      </p>
+      </section>
+
+      <section class="tab" id="tab-moves">
+        <ol id="moves"><li class="empty">No cards played yet.</li></ol>
+      </section>
+
+      <section class="tab" id="tab-about">
+        <h3>A fruit fly's brain, playing Clash Royale</h3>
+        <p>The player called <b>Fly</b> is controlled by a simulation of the adult fruit-fly brain wired exactly like
+          the real one: 134,181 neurons and 2.7 million connections from the
+          <a href="https://flywire.ai" target="_blank" rel="noopener">FlyWire</a> connectome. Which neurons connect, and
+          whether each connection excites or inhibits, comes from the real fly and never changes.</p>
+        <p>Every half-second of game time, the arena is projected onto the fly's ~7,500 photoreceptors. Activity spreads
+          through the wiring, and the descending &amp; motor neurons (pink in the brain view) are read out as its choice:
+          wait, or play a card somewhere.</p>
+        <p>It learned only by playing against copies of itself (reinforcement learning, PPO): wins are rewarded and
+          losses penalised. Training adjusted how strongly each neuron responds, never the wiring. The bots never
+          taught it; they only measure it.</p>
+        <p class="muted">Controls: click a card (or 1–4), then the arena. Drag to orbit, scroll to zoom, B to expand
+          the brain, Space to pause, R for a rematch.</p>
+        <p class="muted">Unofficial fan project, not affiliated with Supercell. FlyWire data CC BY-NC 4.0.
+          <a href="https://github.com/Zaib111/fly-clash-royale" target="_blank" rel="noopener">Source on GitHub</a>.</p>
+      </section>
     </aside>
   </main>
   <script type="module" src="js/main.js"></script>

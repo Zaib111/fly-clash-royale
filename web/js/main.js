@@ -130,7 +130,8 @@ setTimeout(() => { $('hint').style.opacity = 0; }, 7000);
 let brainView = null;
 const brainSeat = flySeats.length ? flySeats[0] : null;
 if (brainSeat !== null) {
-  $('flypanel').classList.remove('hidden');
+  $('brain-section').classList.remove('hidden');
+  document.querySelector('[data-tab="decision"]').classList.remove('hidden');
   const buf = await (await fetch(`/api/brain/${brainSeat}`)).arrayBuffer();
   brainView = new BrainView($('brain'), buf, info.brains[brainSeat].points);
   const toggleBig = () => { document.body.classList.toggle('brain-big'); fitCamera(); };
@@ -241,6 +242,8 @@ function resetMatch(s) {
   renderT = s.t;
   $('result').classList.add('hidden');
   for (const av of avatars.values()) av.swoop = null;
+  clearMoves();
+  updateWinbar(0.5);
 }
 
 function sample(t) {
@@ -291,6 +294,7 @@ function handleEvent(ev) {
     const c = CARDS[card];
     if (c.kind === 'troop') fx.deployRing(t, x, y, 1.0, TEAM[teamOf(p)]);
     if (p !== HUMAN) popCard(c, p, x, y);
+    logMove(t, card, p, x, y);
     const av = avatars.get(p);
     if (av) {
       av.swoop = { t0: performance.now() / 1000, to: toLocal(A, x, y, 3.4), card: cardSprite(c.name) };
@@ -343,6 +347,60 @@ function popCard(c, p, x, y) {
   el.style.top = `${sy}px`;
   $('labels').appendChild(el);
   setTimeout(() => el.remove(), 1400);
+}
+
+// ------------------------------------------------------------------ tabs, moves log, who's-winning bar
+function showTab(name) {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === `tab-${name}`));
+}
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+showTab(brainSeat !== null ? 'decision' : 'moves');
+
+function whereDesc(p, x, y) {
+  const own = p === 0 ? y : A.h - y;                       // distance from that player's back wall
+  const lane = x < A.w / 3 ? 'left' : x < (2 * A.w) / 3 ? 'middle' : 'right';
+  const depth = own < 6 ? 'back' : own < 11 ? 'mid' : own < A.troop_limit ? 'bridge' : own < A.river[1] ? 'river'
+    : own < A.pocket_end ? 'enemy side' : 'enemy king';
+  return `${lane}, ${depth}`;
+}
+function logMove(t, card, p, x, y) {
+  const list = $('moves');
+  const empty = list.querySelector('.empty');
+  if (empty) empty.remove();
+  const c = CARDS[card];
+  const li = document.createElement('li');
+  li.className = 'new';
+  const mm = Math.floor(t / 60), ss = String(Math.floor(t % 60)).padStart(2, '0');
+  const time = document.createElement('span');
+  time.className = 't';
+  time.textContent = `${mm}:${ss}`;
+  const dot = document.createElement('i');
+  dot.className = 'dot';
+  dot.style.background = teamOf(p) ? 'var(--red)' : 'var(--blue)';
+  const what = document.createElement('span');
+  const img = document.createElement('img');
+  img.src = portraits[c.name];
+  img.alt = '';
+  what.append(img, ` ${c.name === 'MiniPekka' ? 'Mini P.E.K.K.A' : c.name}`);
+  what.style.display = 'flex';
+  what.style.alignItems = 'center';
+  what.style.gap = '6px';
+  const who = document.createElement('span');
+  who.className = 'who';
+  who.textContent = `${info.players[p].name} · ${whereDesc(p, x, y)}`;
+  li.append(time, dot, what, who);
+  list.prepend(li);
+  while (list.children.length > 120) list.lastChild.remove();
+}
+function clearMoves() { $('moves').innerHTML = '<li class="empty">No cards played yet.</li>'; }
+
+if (info.has_value) $('winbar').classList.remove('hidden');
+function updateWinbar(p) {
+  if (p === null || p === undefined) return;
+  $('winbar-fill').style.height = `${Math.round(p * 100)}%`;
+  $('winbar-bot-n').textContent = `${Math.round(p * 100)}%`;
+  $('winbar-top-n').textContent = `${Math.round((1 - p) * 100)}%`;
 }
 
 // ------------------------------------------------------------------ the fly's view and card pick
@@ -813,6 +871,7 @@ function frame(tms) {
     updateHUD(a, b, k);
     updateAvatars(now, b);
     updateStatus(newest);
+    updateWinbar(b.win_chance);
   }
   fx.update(renderT);
   arena.update(now);

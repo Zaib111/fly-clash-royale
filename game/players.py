@@ -18,6 +18,12 @@ class PolicyAgent:
         set_threads(threads)
         self.policy, ck = load_checkpoint(path)
         self.cfg = ck["cfg"]
+        self.critic = None            # value network, if the checkpoint has one
+        if "critic" in ck:
+            from fly.critic import Critic
+            self.critic = Critic()
+            self.critic.load_state_dict(ck["critic"])
+            self.critic.eval()
         self.is_fly = self.cfg["policy"] == "fly"
         self.kind = "fly" if self.is_fly else "mlp"
         run = os.path.basename(os.path.dirname(os.path.abspath(path)))
@@ -51,6 +57,16 @@ class PolicyAgent:
         if self.is_fly:
             self.activity = self.state[0, self.policy.read_idx].numpy()
         return a
+
+    def win_chance(self, m, p):
+        """Value network's estimate (0-1) that player p wins from here, or None."""
+        if self.critic is None:
+            return None
+        torch = self.torch
+        sp, vec = observe(m, p)
+        with torch.no_grad():
+            v = float(self.critic(torch.from_numpy(sp)[None], torch.from_numpy(vec)[None]))
+        return min(1.0, max(0.0, (v + 1) / 2))
 
     def describe(self, m, p, a):
         """Human-readable action, e.g. 'Knight - left lane, bridge'."""

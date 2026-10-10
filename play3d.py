@@ -115,6 +115,9 @@ class Game:
         for p, pl in enumerate(self.players):
             if isinstance(pl, PolicyAgent) and pl.is_fly:
                 self.brains[p] = Brain(pl)
+        # any loaded checkpoint's value network can judge the position for the "who's winning" bar
+        self.judge = next((pl for pl in self.players if isinstance(pl, PolicyAgent) and pl.critic is not None), None)
+        self.win_chance = None
         self.match_id = 0
         self.decisions = 0
         self.new_match()
@@ -129,6 +132,7 @@ class Game:
                 pl.reset()
             self.decisions = 0
             self.thinking = {}
+            self.win_chance = None
 
     def init_info(self):
         info = {
@@ -140,6 +144,7 @@ class Game:
             "players": [{"name": pl.name, "kind": getattr(pl, "kind", "bot")} for pl in self.players],
             "view": self.view,
             "human": self.human,
+            "has_value": self.judge is not None,
             "brains": {str(p): {"points": len(b.idx), "neurons": b.n, "connections": b.n_edges,
                                 "synapses": b.n_syn, "groups": Brain.GROUPS}
                        for p, b in self.brains.items()},
@@ -167,6 +172,7 @@ class Game:
             "winner": m.winner, "events": ev, "brains": brain_frames,
             "thinking": self.thinking, "decisions": self.decisions,
             "pockets": [list(m.pockets(0)), list(m.pockets(1))],
+            "win_chance": self.win_chance,      # bottom player's estimated chance to win
         }
 
     def broadcast(self, msg):
@@ -183,6 +189,8 @@ class Game:
         brain_frames = {}
         if m.ticks % DECISION_TICKS == 0:
             self.decisions += 1
+            if self.judge is not None:
+                self.win_chance = round(self.judge.win_chance(m, self.view), 3)
             actions = []
             for p, pl in enumerate(self.players):
                 a = pl.act(m, p)

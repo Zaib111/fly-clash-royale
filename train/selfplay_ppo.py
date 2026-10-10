@@ -20,26 +20,13 @@ import numpy as np
 import torch
 from torch import nn
 
+from fly.critic import Critic
 from fly.policies import load_params, make_policy, params_of, save_checkpoint
 from game.bots import RandomBot, ScriptedBot
 from game.env import C, GH, GW, NUM_ACTIONS, SHAPING, V, VecEnv
 
 ROOT = Path(__file__).resolve().parent.parent
 SELF = -1
-
-
-class Critic(nn.Module):
-    """Value function on the raw observation (only used for training, not for playing)."""
-
-    def __init__(self, hidden=256):
-        super().__init__()
-        self.conv = nn.Sequential(nn.Conv2d(C, 32, 3, padding=1), nn.ReLU(),
-                                  nn.Conv2d(32, 32, 3, padding=1, stride=2), nn.ReLU())
-        self.head = nn.Sequential(nn.Linear(32 * 8 * 5 + V, hidden), nn.ReLU(), nn.Linear(hidden, 1))
-
-    def forward(self, spatial, vector):
-        x = self.conv(spatial).flatten(1)
-        return self.head(torch.cat([x, vector], 1)).squeeze(1)
 
 
 class Pool:
@@ -370,7 +357,7 @@ def main():
                         {"critic": critic.state_dict(), "opt": opt.state_dict(), "pool": vars(pool),
                          "iter": it})
         if (it + 1) % 50 == 0:
-            save_checkpoint(run / f"iter{it + 1:05d}.pt", policy, cfg)
+            save_checkpoint(run / f"iter{it + 1:05d}.pt", policy, cfg, {"critic": critic.state_dict()})
     log_f.close()
     print("done")
 
