@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 
 from game.cards import CARDS
-from game.env import DECISION_TICKS, apply_action
+from game.env import DECISION_TICKS, GW, G, NUM_TROOP_TYPES, apply_action, decode_action
 from game.players import Human, PolicyAgent, make_player
 from game.sim import BRIDGES, DT, HEIGHT, RIVER_HI, RIVER_LO, WIDTH, Match
 
@@ -69,15 +69,34 @@ class Brain:
         self.n_edges = int(len(data["syn"]))
         self.n_syn = int(data["syn"].sum())
 
-    def frame(self, state):
-        h = state[0].numpy()
+    def frame(self, agent: PolicyAgent, m, seat):
+        h = agent.state[0].numpy()
         shown = np.clip(h[self.idx] / 0.4, 0, 1)
-        return {
+        out = {
             "act": base64.b64encode((shown * 255).astype(np.uint8).tobytes()).decode(),
             "active": int((h > 0.05).sum()),
             "active_out": int((h[self.read_idx] > 0.05).sum()),
             "mean": _num(h.mean()),
         }
+        # what it saw (its own side at the bottom): its troops, enemy troops, its towers,
+        # enemy towers, spells - one byte per cell each
+        sp = agent.obs
+        nt = NUM_TROOP_TYPES
+        planes = np.stack([sp[:nt].sum(0) / 1.5, sp[nt:2 * nt].sum(0) / 1.5,
+                           np.clip(sp[2 * nt], 0, 1), np.clip(sp[2 * nt + 1], 0, 1),
+                           np.clip(sp[2 * nt + 2] + sp[2 * nt + 3], 0, 1)])
+        out["vision"] = base64.b64encode((np.clip(planes, 0, 1) * 255).astype(np.uint8).tobytes()).decode()
+        # where it wanted to play (summed over cards) and how much it liked each card
+        probs = agent.probs
+        cards = probs[1:].reshape(4, G)
+        out["intent"] = [round(float(v), 4) for v in cards.sum(0)]
+        out["slots"] = [round(float(v), 4) for v in cards.sum(1)]
+        out["wait"] = round(float(probs[0]), 4)
+        d = decode_action(agent.last_action)
+        out["chosen"] = None if d is None else [d[0], d[2] * GW + d[1]]
+        out["hand"] = list(m.hand(seat))
+        out["elixir"] = _num(m.elixir[seat])
+        return out
 
 
 class Game:
@@ -160,12 +179,15 @@ class Game:
         brain_frames = {}
         if m.ticks % DECISION_TICKS == 0:
             self.decisions += 1
+            actions = []
             for p, pl in enumerate(self.players):
                 a = pl.act(m, p)
                 if isinstance(pl, PolicyAgent):
                     self.thinking[str(p)] = [[desc, round(pr, 3)] for desc, pr in pl.top]
                     if p in self.brains:
-                        brain_frames[str(p)] = self.brains[p].frame(pl.state)
+                        brain_frames[str(p)] = self.brains[p].frame(pl, m, p)
+                actions.append(a)
+            for p, a in enumerate(actions):
                 apply_action(m, p, a)
         m.step()
         events = list(m.events)

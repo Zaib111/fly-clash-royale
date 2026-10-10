@@ -35,7 +35,13 @@ Training runs on the CPU, since PyTorch has no sparse support on Apple GPUs. It 
 .venv/bin/python -m train.selfplay_ppo --policy mlp --run mlp1 --minutes 30
 ```
 
-Progress prints every iteration and is written to `runs/<name>/log.csv`. The columns are entropy, play rate, Elo vs past selves, and win rate against the random and scripted bots every 20 iterations. Checkpoints are `runs/<name>/latest.pt` plus `iterNNNNN.pt` every 50 iterations.
+**Training dashboard.** Live charts of win rate, Elo, play rate and match length, read from the log. It's safe to keep open while training runs:
+
+```bash
+.venv/bin/python dashboard.py            # http://127.0.0.1:8766
+```
+
+Progress also prints every iteration and is written to `runs/<name>/log.csv`. The columns are entropy, play rate, Elo vs past selves, and win rate against the random and scripted bots every 20 iterations. Checkpoints are `runs/<name>/latest.pt` plus `iterNNNNN.pt` every 50 iterations.
 
 ## Watch / play
 
@@ -46,6 +52,8 @@ Progress prints every iteration and is written to `runs/<name>/log.csv`. The col
 .venv/bin/python play3d.py --p1 scripted --p2 runs/fly1/latest.pt  # watch the fly play the bot
 .venv/bin/python play3d.py --p1 human --p2 scripted                # no fly needed
 ```
+
+The side panel shows the fly's brain lighting up as a wave, from the eyes through the central brain to the motor neurons. It also shows what the fly sees (the 9×16 grid on its photoreceptors, with a glow where it wants to play) and its hand, with the odds of playing each card.
 
 Controls: click a card (or press 1–4), then click your half of the arena. Drag to orbit, scroll to zoom, double-click to reset the view. Space pauses, +/- changes speed and R starts a rematch. three.js r160 is vendored in `web/vendor/` (MIT), so no internet connection is needed.
 

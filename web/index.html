@@ -69,6 +69,23 @@
         <div id="legend"></div>
       </div>
       <div id="stats"></div>
+      <div id="decision">
+        <div class="vision-col">
+          <h4>WHAT IT SEES</h4>
+          <canvas id="vision" width="360" height="640"></canvas>
+          <div class="vision-key">
+            <span><i style="background:#47c6ff"></i>its troops</span>
+            <span><i style="background:#ff7a45"></i>enemy</span>
+            <span><i class="ring"></i>where it wants to play</span>
+          </div>
+        </div>
+        <div class="hand-col">
+          <h4>ITS HAND</h4>
+          <div id="fly-hand"></div>
+          <div id="fly-wait" class="pick"><div class="bar"><i></i></div><span>Wait</span><em>–</em></div>
+          <div id="fly-elixir"></div>
+        </div>
+      </div>
       <div id="thinking">
         <h4>WHAT IT'S CONSIDERING</h4>
         <ol id="think-list"></ol>

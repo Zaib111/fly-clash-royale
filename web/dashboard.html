@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fly Training Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%AA%B0%3C/text%3E%3C/svg%3E">
+<style>
+  .viz-root {
+    color-scheme: dark;
+    --page: #0d0d12;
+    --surface-1: #15151d;
+    --line: #262632;
+    --grid: #2a2a36;
+    --baseline: #3a3a48;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --accent: #ff8a3d;
+    --series-1: #3987e5;   /* categorical slot 1 (blue)   - vs random bot */
+    --series-2: #d95926;   /* categorical slot 2 (orange) - vs scripted bot */
+    --good: #0ca30c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  header h1 span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; flex: 1; min-width: 200px; }
+  select { background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
+  .pill { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    background: #22222e; color: #cfcfe0; border: 1px solid #33334a; }
+  .pill.live { background: rgba(12,163,12,0.12); color: #6be29a; border-color: rgba(12,163,12,0.4); }
+  main { padding: 18px 22px 40px; display: grid; gap: 16px; max-width: 1280px; margin: 0 auto; }
+  .tiles { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 12px; }
+  .tile, .card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--muted); }
+  .tile .value { font-size: 26px; font-weight: 600; margin-top: 4px; }
+  .tile.hero .value { font-size: 48px; line-height: 1.05; }
+  .tile .note { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .card .desc { margin: 3px 0 8px; font-size: 12px; color: var(--muted); }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .legend i { display: inline-block; width: 16px; height: 2px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .chart { position: relative; height: 230px; }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 0 20px; }
+  .tip { position: absolute; pointer-events: none; background: #0b0b10; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+    font-size: 12px; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,0.5); display: none; z-index: 2; }
+  .tip .x { color: var(--muted); margin-bottom: 4px; }
+  .tip .row { display: flex; align-items: center; gap: 8px; }
+  .tip .row i { width: 12px; height: 2px; border-radius: 2px; }
+  .tip .row b { font-variant-numeric: tabular-nums; }
+  .tip .row span { color: var(--text-secondary); }
+  pre { margin: 0; font: 11.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-secondary); white-space: pre; overflow-x: auto; }
+  details summary { cursor: pointer; font-size: 13px; color: var(--text-secondary); }
+  table { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  th, td { padding: 5px 14px 5px 0; text-align: right; font-variant-numeric: tabular-nums; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  th:first-child, td:first-child { text-align: left; }
+  @media (max-width: 900px) { .tiles { grid-template-columns: 1fr 1fr; } .tile.hero { grid-column: 1 / -1; } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="viz-root">
+<header>
+  <h1>Fly <span>training dashboard</span></h1>
+  <div class="sub" id="sub">loading…</div>
+  <select id="run" aria-label="Training run"></select>
+  <span class="pill" id="state">–</span>
+</header>
+<main>
+  <section class="tiles">
+    <div class="tile hero"><div class="label">Win rate vs scripted bot</div><div class="value" id="t-hero">–</div><div class="note" id="t-hero-note"></div></div>
+    <div class="tile"><div class="label">Win rate vs random bot</div><div class="value" id="t-random">–</div></div>
+    <div class="tile"><div class="label">Elo vs its past selves</div><div class="value" id="t-elo">–</div></div>
+    <div class="tile"><div class="label">Iterations</div><div class="value" id="t-iter">–</div><div class="note" id="t-iter-note"></div></div>
+    <div class="tile"><div class="label">Time trained</div><div class="value" id="t-time">–</div><div class="note" id="t-time-note"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Win rate against the bots</h2>
+    <p class="desc">32 test matches every 20 iterations. The bots never train the fly - they only measure it.</p>
+    <div class="legend"><span><i style="background: var(--series-1)"></i>vs random bot</span><span><i style="background: var(--series-2)"></i>vs scripted bot</span></div>
+    <div class="chart" id="c-win"></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card"><h2>Elo against its past selves</h2><p class="desc">Starts at 1,000. Rising means it beats older versions of itself.</p><div class="chart" id="c-elo"></div></div>
+    <div class="card"><h2>How often it plays a card</h2><p class="desc">Share of half-second decisions where it plays instead of waiting.</p><div class="chart" id="c-play"></div></div>
+  </section>
+  <section class="grid2">
+    <div class="card"><h2>Match length</h2><p class="desc">Average of recent self-play matches. Under 3:00 means a King tower fell.</p><div class="chart" id="c-len"></div></div>
+    <div class="card"><h2>Latest log</h2><p class="desc" id="log-note">Refreshes every 20 seconds.</p><pre id="log"></pre></div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Table view of every evaluation</summary>
+      <table id="table"></table>
+    </details>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.body).getPropertyValue(v).trim();
+const NS = 'http://www.w3.org/2000/svg';
+const pct = (v) => `${Math.round(v * 100)}%`;
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function niceTicks(lo, hi, n = 4) {
+  const span = hi - lo || 1;
+  const step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= step0);
+  const ticks = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(+v.toFixed(10));
+  return ticks;
+}
+
+// Line chart: series = [{name, color, points: [[x, y]], markers}], one y-axis, crosshair + tooltip.
+function lineChart(host, { series, yMin, yMax, yFmt, xFmt = (x) => `Iteration ${x}`, empty }) {
+  host.innerHTML = '';
+  const all = series.flatMap((s) => s.points);
+  if (!all.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = empty;
+    host.appendChild(d);
+    return;
+  }
+  const W = host.clientWidth, H = host.clientHeight;
+  const m = { l: 46, r: series.length > 1 ? 92 : 20, t: 10, b: 26 };
+  const xs = all.map((p) => p[0]);
+  const x0 = Math.min(0, ...xs), x1 = Math.max(...xs, 1);
+  let lo = yMin ?? Math.min(...all.map((p) => p[1])), hi = yMax ?? Math.max(...all.map((p) => p[1]));
+  if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+  const ticks = niceTicks(lo, hi);
+  lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const X = (x) => m.l + ((x - x0) / (x1 - x0)) * (W - m.l - m.r);
+  const Y = (y) => m.t + (1 - (y - lo) / (hi - lo)) * (H - m.t - m.b);
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, host);
+  for (const t of ticks) {
+    el('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === ticks[0] ? css('--baseline') : css('--grid'), 'stroke-width': 1 }, svg);
+    const tx = el('text', { x: m.l - 8, y: Y(t) + 4, 'text-anchor': 'end', fill: css('--muted'), 'font-size': 11 }, svg);
+    tx.textContent = yFmt(t);
+  }
+  for (const t of niceTicks(x0, x1, 5)) {
+    const tx = el('text', { x: X(t), y: H - 6, 'text-anchor': 'middle', fill: css('--muted'), 'font-size': 11 }, svg);
+    tx.textContent = t;
+  }
+  const ends = [];
+  for (const s of series) {
+    if (!s.points.length) continue;
+    const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join('');
+    el('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+    const pts = s.markers ? s.points : [s.points[s.points.length - 1]];
+    for (const p of pts) el('circle', { cx: X(p[0]), cy: Y(p[1]), r: 4, fill: s.color, stroke: css('--surface-1'), 'stroke-width': 2 }, svg);
+    const last = s.points[s.points.length - 1];
+    ends.push({ s, y: Y(last[1]), x: X(last[0]), v: last[1] });
+  }
+  // direct end labels only when they don't collide (the legend always carries identity)
+  if (series.length > 1 && ends.length > 1) {
+    ends.sort((a, b) => a.y - b.y);
+    const clear = ends.every((e, i) => !i || e.y - ends[i - 1].y >= 15);
+    if (clear) for (const e of ends) {
+      const t = el('text', { x: e.x + 9, y: e.y + 4, fill: css('--text-secondary'), 'font-size': 11.5 }, svg);
+      t.textContent = `${e.s.name} ${yFmt(e.v)}`;
+    }
+  }
+  // crosshair + tooltip
+  const cross = el('line', { y1: m.t, y2: H - m.b, stroke: css('--muted'), 'stroke-width': 1, opacity: 0 }, svg);
+  const tip = document.createElement('div');
+  tip.className = 'tip';
+  host.appendChild(tip);
+  const allX = [...new Set(xs)].sort((a, b) => a - b);
+  const hit = el('rect', { x: m.l, y: 0, width: W - m.l - m.r, height: H, fill: 'transparent', tabindex: 0 }, svg);
+  function show(x) {
+    cross.setAttribute('x1', X(x)); cross.setAttribute('x2', X(x)); cross.setAttribute('opacity', 1);
+    tip.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'x';
+    head.textContent = xFmt(x);
+    tip.appendChild(head);
+    for (const s of series) {
+      const p = s.points.find((q) => q[0] === x);
+      const row = document.createElement('div');
+      row.className = 'row';
+      const key = document.createElement('i');
+      key.style.background = s.color;
+      const b = document.createElement('b');
+      b.textContent = p ? yFmt(p[1]) : '–';
+      const n = document.createElement('span');
+      n.textContent = s.name;
+      row.append(key, b, n);
+      tip.appendChild(row);
+    }
+    tip.style.display = 'block';
+    const left = X(x) + 12;
+    tip.style.left = `${Math.min(left, W - tip.offsetWidth - 4)}px`;
+    tip.style.top = `${m.t}px`;
+  }
+  hit.addEventListener('pointermove', (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W;
+    let best = allX[0];
+    for (const x of allX) if (Math.abs(X(x) - px) < Math.abs(X(best) - px)) best = x;
+    show(best);
+  });
+  hit.addEventListener('focus', () => show(allX[allX.length - 1]));
+  for (const ev of ['pointerleave', 'blur']) hit.addEventListener(ev, () => { tip.style.display = 'none'; cross.setAttribute('opacity', 0); });
+}
+
+let current = new URLSearchParams(location.search).get('run');
+let lastData = null;
+async function refresh() {
+  const runs = await (await fetch('/api/runs')).json();
+  if (!runs.length) { $('sub').textContent = 'No training runs found in runs/ yet.'; return; }
+  if (!current || !runs.includes(current)) current = runs[0];
+  const sel = $('run');
+  sel.replaceChildren(...runs.map((r) => { const o = document.createElement('option'); o.value = o.textContent = r; o.selected = r === current; return o; }));
+  const data = await (await fetch(`/api/run?name=${encodeURIComponent(current)}`)).json();
+  lastData = data;
+  render(data);
+}
+
+function render(data) {
+  const rows = data.rows;
+  const last = rows[rows.length - 1] || {};
+  const evals = rows.filter((r) => r.eval_random_win !== null || r.eval_scripted_win !== null);
+  const lastEval = evals[evals.length - 1];
+  const a = data.args || {};
+  $('sub').textContent = `${a.policy === 'mlp' ? 'MLP baseline' : 'Fruit-fly connectome'} · ${a.envs ?? '?'} parallel matches · ` +
+    `${a.minutes ?? '?'} min budget · updated ${new Date(data.updated * 1000).toLocaleTimeString()}`;
+  const live = Date.now() / 1000 - data.updated < 600;
+  $('state').textContent = live ? 'training' : 'stopped';
+  $('state').className = `pill${live ? ' live' : ''}`;
+
+  const evalEvery = a.eval_every || 20;
+  const nextEval = Math.ceil(((last.iter ?? -1) + 1) / evalEvery) * evalEvery;
+  $('t-hero').textContent = lastEval ? pct(lastEval.eval_scripted_win) : '–';
+  $('t-hero-note').textContent = lastEval
+    ? `${Math.round(lastEval.eval_scripted_win * 32)} of 32 games at iteration ${lastEval.iter}` +
+      (lastEval.eval_scripted_draw ? `, ${Math.round(lastEval.eval_scripted_draw * 32)} drawn` : '')
+    : `first test after ${nextEval} iterations`;
+  $('t-random').textContent = lastEval ? pct(lastEval.eval_random_win) : '–';
+  $('t-elo').textContent = last.elo != null ? Math.round(last.elo).toLocaleString() : '–';
+  $('t-iter').textContent = rows.length ? (last.iter + 1).toLocaleString() : '0';
+  const perIt = rows.length > 1 ? (last.minutes / rows.length) : null;
+  $('t-iter-note').textContent = perIt ? `~${perIt.toFixed(1)} min each` : '';
+  const mins = last.minutes || 0;
+  $('t-time').textContent = mins >= 60 ? `${(mins / 60).toFixed(1)} h` : `${Math.round(mins)} min`;
+  $('t-time-note').textContent = a.minutes ? `of ${(a.minutes / 60).toFixed(1)} h planned` : '';
+
+  const blue = css('--series-1'), orange = css('--series-2');
+  lineChart($('c-win'), {
+    series: [
+      { name: 'vs random', color: blue, markers: true, points: evals.filter((r) => r.eval_random_win !== null).map((r) => [r.iter, r.eval_random_win]) },
+      { name: 'vs scripted', color: orange, markers: true, points: evals.filter((r) => r.eval_scripted_win !== null).map((r) => [r.iter, r.eval_scripted_win]) },
+    ],
+    yMin: 0, yMax: 1, yFmt: pct,
+    empty: `No evaluations yet - the first runs after ${nextEval} iterations (about ${perIt ? Math.round((nextEval - rows.length) * perIt) : '?'} min from now).`,
+  });
+  const line = (key, scale = 1) => rows.filter((r) => r[key] != null).map((r) => [r.iter, r[key] * scale]);
+  lineChart($('c-elo'), { series: [{ name: 'Elo', color: blue, points: line('elo') }], yFmt: (v) => Math.round(v).toLocaleString(), empty: 'Waiting for the first iteration.' });
+  lineChart($('c-play'), { series: [{ name: 'plays a card', color: blue, points: line('play_rate') }], yMin: 0, yFmt: pct, empty: 'Waiting for the first iteration.' });
+  lineChart($('c-len'), {
+    series: [{ name: 'match length', color: blue, points: rows.filter((r) => r.match_len > 0).map((r) => [r.iter, r.match_len]) }],
+    yMin: 0, yMax: 180, yFmt: (v) => `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}`,
+    empty: 'No matches finished yet (each match is 3 minutes of game time).',
+  });
+  $('log').textContent = data.tail.join('\n') || '(no log file)';
+
+  const t = $('table');
+  t.replaceChildren();
+  const hr = t.insertRow();
+  for (const h of ['Iteration', 'Hours', 'vs random', 'vs scripted', 'draws vs scripted', 'Elo']) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    hr.appendChild(th);
+  }
+  for (const r of evals) {
+    const tr = t.insertRow();
+    for (const v of [r.iter, (r.minutes / 60).toFixed(1), pct(r.eval_random_win), pct(r.eval_scripted_win), pct(r.eval_scripted_draw || 0), Math.round(r.elo)]) {
+      tr.insertCell().textContent = v;
+    }
+  }
+}
+
+$('run').addEventListener('change', (e) => { current = e.target.value; history.replaceState(null, '', `?run=${current}`); refresh(); });
+window.addEventListener('resize', () => lastData && render(lastData));
+refresh();
+setInterval(refresh, 20000);
+</script>
+</body>
+</html>

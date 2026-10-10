@@ -198,9 +198,10 @@ def main():
         opp[i] = new_opponent()
     state = policy.initial_state(S)
 
+    new_log = not (run / "log.csv").exists() or (run / "log.csv").stat().st_size == 0
     log_f = open(run / "log.csv", "a", newline="")
     log = csv.writer(log_f)
-    if it0 == 0:
+    if new_log:
         log.writerow(["iter", "minutes", "samples", "sps", "pi_loss", "v_loss", "entropy", "kl",
                       "play_rate", "match_len", "elo", "pool_winrate", "eval_random_win",
                       "eval_scripted_win", "eval_scripted_draw"])

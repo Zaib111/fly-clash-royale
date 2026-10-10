@@ -44,7 +44,11 @@ export class BrainView {
     this.count = count;
     this.group = group;
     this.level = new Float32Array(count);    // displayed activity (smoothed)
-    this.target = new Float32Array(count);   // latest activity from the server
+    this.target = new Float32Array(count);   // activity each neuron is easing toward
+    this.next = new Float32Array(count);     // newest activity from the server, revealed in stages
+    this.byGroup = [0, 1, 2, 3].map((g) => Int32Array.from([...group.keys()].filter((i) => group[i] === g)));
+    this.reveal = null;                      // {t0, done: [bool x4]}
+    this.clock = 0;
     const tex = dotTexture();
     // two layers: everything, plus bigger dots for the output (descending/motor) neurons
     this.layers = [];
@@ -66,8 +70,38 @@ export class BrainView {
       this.scene.add(pts);
       this.layers.push({ idx: Int32Array.from(idx), col });
     }
+    // signal pulses: eyes -> central brain -> descending/motor
+    this.maxPulses = 160;
+    this.pulses = [];
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.maxPulses * 3), 3));
+    pg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.maxPulses * 3), 3));
+    this.pulseGeo = pg;
+    this.scene.add(new THREE.Points(pg, new THREE.PointsMaterial({
+      size: 0.07, map: tex, vertexColors: true, transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, sizeAttenuation: true,
+    })));
+    this.pos = pos;
     this.resize();
     new ResizeObserver(() => this.resize()).observe(canvas);
+  }
+
+  point(group) {
+    const ids = this.byGroup[group];
+    const i = ids[Math.floor(Math.random() * ids.length)];
+    return new THREE.Vector3(this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]);
+  }
+
+  // A new decision: reveal activity as a wave (senses -> central -> motor) and fire pulses.
+  decide(nPulses = 40) {
+    this.reveal = { t0: this.clock, done: [false, false, false, false] };
+    for (let k = 0; k < nPulses && this.byGroup[1].length && this.byGroup[3].length; k++) {
+      if (this.pulses.length >= this.maxPulses) this.pulses.shift();
+      this.pulses.push({
+        a: this.point(Math.random() < 0.8 ? 1 : 2), b: this.point(0), c: this.point(3),
+        t0: this.clock + Math.random() * 0.15, dur: 0.55 + Math.random() * 0.25,
+      });
+    }
   }
 
   resize() {
@@ -81,10 +115,38 @@ export class BrainView {
   setActivity(b64) {
     const bin = atob(b64);
     const n = Math.min(bin.length, this.count);
-    for (let i = 0; i < n; i++) this.target[i] = bin.charCodeAt(i) / 255;
+    for (let i = 0; i < n; i++) this.next[i] = bin.charCodeAt(i) / 255;
+    this.decide();
   }
 
   update(dt) {
+    this.clock += dt;
+    if (this.reveal) {
+      const DELAY = [0.2, 0.0, 0.0, 0.42];   // central, eyes, senses, motor
+      const el = this.clock - this.reveal.t0;
+      for (let g = 0; g < 4; g++) {
+        if (!this.reveal.done[g] && el >= DELAY[g]) {
+          for (const i of this.byGroup[g]) this.target[i] = this.next[i];
+          this.reveal.done[g] = true;
+        }
+      }
+      if (this.reveal.done.every(Boolean)) this.reveal = null;
+    }
+    const pp = this.pulseGeo.attributes.position.array, pc = this.pulseGeo.attributes.color.array;
+    pp.fill(0); pc.fill(0);
+    this.pulses = this.pulses.filter((p) => this.clock - p.t0 < p.dur);
+    this.pulses.forEach((p, k) => {
+      const t = Math.max(0, (this.clock - p.t0) / p.dur);
+      if (t <= 0) return;
+      const v = t < 0.5 ? p.a.clone().lerp(p.b, t * 2) : p.b.clone().lerp(p.c, (t - 0.5) * 2);
+      v.y += Math.sin(t * Math.PI) * 0.08;
+      pp.set([v.x, v.y, v.z], k * 3);
+      const warm = t < 0.5 ? [0.5, 0.9, 1.0] : [1.0, 0.55, 0.95];   // cyan from the eyes, pink into motor
+      const f = Math.sin(t * Math.PI) * 1.4;
+      pc.set([warm[0] * f, warm[1] * f, warm[2] * f], k * 3);
+    });
+    this.pulseGeo.attributes.position.needsUpdate = true;
+    this.pulseGeo.attributes.color.needsUpdate = true;
     const k = Math.min(1, dt * 7);
     const lv = this.level, tg = this.target, grp = this.group;
     for (let i = 0; i < this.count; i++) lv[i] += (tg[i] - lv[i]) * k;

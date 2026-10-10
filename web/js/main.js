@@ -143,12 +143,12 @@ fitCamera();
 const avatars = new Map();
 for (const seat of flySeats) {
   const fly = makeFly();
-  fly.group.scale.setScalar(1.5);
+  fly.group.scale.setScalar(2.3);
   // hover behind its own king tower; if it's the bottom player, off to the side so it doesn't block the view
   const kingY = seat === 0 ? 3 : A.h - 3;
-  const behind = seat === 0 ? -4.4 : 4.4;
-  const home = seat === VIEW ? toLocal(A, A.w + 3.2, kingY + (seat === 0 ? 2 : -2), 5)
-    : toLocal(A, A.w / 2, kingY + behind, 5);
+  const behind = seat === 0 ? -1.6 : 1.6;
+  const home = seat === VIEW ? toLocal(A, A.w + 3.6, kingY + (seat === 0 ? 3 : -3), 5.5)
+    : toLocal(A, A.w / 2, kingY + behind, 5.2);
   fly.group.position.copy(home);
   world.add(fly.group);
   avatars.set(seat, { ...fly, home, swoop: null, yaw: seat === 0 ? Math.PI : 0 });
@@ -214,6 +214,8 @@ stream.onmessage = (e) => {
     if (brainView && Number(seat) === brainSeat) {
       brainView.setActivity(fr.act);
       updateStats(fr, s);
+      if (fr.vision) renderVision(fr);
+      if (fr.slots) renderFlyHand(fr);
       flashState('deciding', 'warn');
     }
   }
@@ -287,7 +289,8 @@ function handleEvent(ev) {
     if (p !== HUMAN) popCard(c, p, x, y);
     const av = avatars.get(p);
     if (av) {
-      av.swoop = { t0: performance.now() / 1000, to: toLocal(A, x, y, 2.6) };
+      av.swoop = { t0: performance.now() / 1000, to: toLocal(A, x, y, 3.4), card: cardSprite(c.name) };
+      world.add(av.swoop.card);
       if (p === brainSeat) flashState(`played ${c.name}`, 'live', 1500);
     }
   }
@@ -336,6 +339,100 @@ function popCard(c, p, x, y) {
   el.style.top = `${sy}px`;
   $('labels').appendChild(el);
   setTimeout(() => el.remove(), 1400);
+}
+
+// ------------------------------------------------------------------ the fly's view and card pick
+const textures = {};
+function cardSprite(name) {
+  if (!textures[name]) {
+    textures[name] = new THREE.TextureLoader().load(portraits[name]);
+    textures[name].colorSpace = THREE.SRGBColorSpace;
+  }
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures[name], transparent: true, depthWrite: false }));
+  s.scale.set(1.9, 2.3, 1);
+  return s;
+}
+
+const visionCtx = $('vision').getContext('2d');
+function renderVision(fr) {
+  const g = visionCtx, W = 180, H = 320, cw = W / 9, ch = H / 16;
+  g.setTransform(2, 0, 0, 2, 0, 0);   // canvas is 2x for sharpness
+  const bin = atob(fr.vision);
+  const at = (plane, cy, cx) => bin.charCodeAt(plane * 144 + cy * 9 + cx) / 255;
+  g.fillStyle = '#07070c';
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(60, 140, 220, 0.18)';          // the river, rows 7-8
+  g.fillRect(0, H - 9 * ch, W, 2 * ch);
+  const maxIntent = Math.max(...fr.intent);
+  for (let cy = 0; cy < 16; cy++) {
+    for (let cx = 0; cx < 9; cx++) {
+      const x = cx * cw + cw / 2, y = H - (cy * ch + ch / 2);   // its own side at the bottom
+      const own = at(0, cy, cx), enemy = at(1, cy, cx), myTower = at(2, cy, cx), theirTower = at(3, cy, cx), spell = at(4, cy, cx);
+      const intent = maxIntent > 0.002 ? fr.intent[cy * 9 + cx] / maxIntent : 0;
+      if (intent > 0.05) {
+        const grd = g.createRadialGradient(x, y, 0, x, y, cw * 0.9);
+        grd.addColorStop(0, `rgba(255, 190, 90, ${0.75 * intent})`);
+        grd.addColorStop(1, 'rgba(255, 190, 90, 0)');
+        g.fillStyle = grd;
+        g.fillRect(x - cw, y - ch, cw * 2, ch * 2);
+      }
+      g.beginPath();                                   // one "ommatidium" per cell
+      g.arc(x, y, cw * 0.36, 0, Math.PI * 2);
+      g.fillStyle = '#1b1e2b';
+      g.fill();
+      if (myTower > 0 || theirTower > 0) {
+        g.fillStyle = myTower > 0 ? `rgba(71, 198, 255, ${0.25 + 0.5 * myTower})` : `rgba(255, 122, 69, ${0.25 + 0.5 * theirTower})`;
+        g.fillRect(x - cw * 0.42, y - ch * 0.42, cw * 0.84, ch * 0.84);
+      }
+      for (const [v, col] of [[own, '71, 198, 255'], [enemy, '255, 122, 69']]) {
+        if (v <= 0) continue;
+        g.beginPath();
+        g.arc(x, y, cw * (0.2 + 0.2 * Math.min(1, v * 2)), 0, Math.PI * 2);
+        g.fillStyle = `rgba(${col}, ${0.55 + 0.45 * Math.min(1, v * 2)})`;
+        g.fill();
+      }
+      if (spell > 0) {
+        g.beginPath();
+        g.arc(x, y, cw * 0.45, 0, Math.PI * 2);
+        g.strokeStyle = '#ffe066';
+        g.lineWidth = 2;
+        g.stroke();
+      }
+    }
+  }
+  if (fr.chosen) {
+    const cell = fr.chosen[1], cx = cell % 9, cy = Math.floor(cell / 9);
+    g.beginPath();
+    g.arc(cx * cw + cw / 2, H - (cy * ch + ch / 2), cw * 0.55, 0, Math.PI * 2);
+    g.strokeStyle = '#ffd27a';
+    g.lineWidth = 3;
+    g.stroke();
+  }
+}
+
+const flyHand = [0, 1, 2, 3].map(() => {
+  const el = document.createElement('div');
+  el.className = 'pick';
+  el.innerHTML = '<div class="bar"><i></i></div><img alt=""><span></span><em></em>';
+  $('fly-hand').appendChild(el);
+  return el;
+});
+function renderFlyHand(fr) {
+  fr.hand.forEach((cid, i) => {
+    const c = CARDS[cid], el = flyHand[i];
+    const img = el.querySelector('img');
+    if (img.dataset.card !== c.name) { img.src = portraits[c.name]; img.dataset.card = c.name; }
+    el.querySelector('span').textContent = `${c.name === 'MiniPekka' ? 'Mini P.E.K.K.A' : c.name} · ${c.cost}`;
+    el.querySelector('em').textContent = `${(fr.slots[i] * 100).toFixed(0)}%`;
+    el.querySelector('.bar i').style.width = `${fr.slots[i] * 100}%`;
+    el.classList.toggle('chosen', !!fr.chosen && fr.chosen[0] === i);
+    el.classList.toggle('broke', fr.elixir < c.cost);
+  });
+  const w = $('fly-wait');
+  w.querySelector('em').textContent = `${(fr.wait * 100).toFixed(0)}%`;
+  w.querySelector('.bar i').style.width = `${fr.wait * 100}%`;
+  w.classList.toggle('chosen', !fr.chosen);
+  $('fly-elixir').innerHTML = `elixir <b>${fr.elixir.toFixed(1)}</b> / 10`;
 }
 
 // ------------------------------------------------------------------ fly panel text
@@ -621,10 +718,15 @@ function updateAvatars(now, b) {
     target.y += Math.sin(now * 2.1) * 0.3;
     if (av.swoop) {
       const p = now - av.swoop.t0;
-      if (p > 1.4) av.swoop = null;
+      const card = av.swoop.card;
+      if (p > 1.4) { world.remove(card); card.material.dispose(); av.swoop = null; }
       else {
         const k = p < 0.4 ? 1 - Math.pow(1 - p / 0.4, 3) : p < 0.6 ? 1 : 1 - (p - 0.6) / 0.8;
         target = av.home.clone().lerp(av.swoop.to, Math.max(0, k));
+        // the fly carries its card in, lets go over the drop spot, and the card fades as it lands
+        if (p < 0.45) card.position.copy(av.group.position).add(new THREE.Vector3(0, -1.3, 0));
+        else card.position.y = Math.max(0.9, card.position.y - 0.12);
+        card.material.opacity = p < 0.45 ? 1 : Math.max(0, 1 - (p - 0.45) / 0.6);
       }
     }
     av.group.position.lerp(target, av.swoop ? 0.35 : 0.08);

@@ -28,6 +28,9 @@ class PolicyAgent:
         self.state = self.policy.initial_state(1)
         self.activity = None      # descending + motor neuron rates (fly only)
         self.top = []             # [(description, prob)] for the last decision
+        self.probs = None         # full action distribution of the last decision
+        self.obs = None           # spatial observation the fly saw
+        self.last_action = 0
 
     def act(self, m, p):
         torch = self.torch
@@ -44,6 +47,7 @@ class PolicyAgent:
             d = self.describe(m, p, int(i))
             options[d] = options.get(d, 0.0) + float(probs[i])
         self.top = sorted(options.items(), key=lambda kv: -kv[1])[:3]
+        self.probs, self.obs, self.last_action = probs.numpy(), sp, a
         if self.is_fly:
             self.activity = self.state[0, self.policy.read_idx].numpy()
         return a

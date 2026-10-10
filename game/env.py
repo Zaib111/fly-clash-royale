@@ -23,6 +23,7 @@ DECISION_TICKS = TICKS_PER_SEC // 2          # decide every 0.5s
 TROOP_ROWS = 7                               # own-perspective rows where troops may land
 _TROOP_PLANE = {cid: i for i, cid in enumerate(TROOP_IDS)}
 NT = len(TROOP_IDS)
+NUM_TROOP_TYPES = NT
 C = 2 * NT + 4
 V = 1 + 4 * NUM_CARDS + NUM_CARDS + 4 + 1 + 1 + 2 + 2 + 6
 SHAPING = 0.5                                # reward per whole enemy tower-HP pool removed
