@@ -176,7 +176,7 @@ def main():
         load_params(policy, ck["params"])
         critic.load_state_dict(ck["critic"])
         opt.load_state_dict(ck["opt"])
-        pool = ck["pool"]
+        pool.__dict__.update(ck["pool"])
         it0 = ck["iter"] + 1
         print(f"resumed from iteration {it0}")
     else:
@@ -361,7 +361,7 @@ def main():
               f"{upd_time:.0f}s update) | ent {st[2]:.2f} kl {st[3]:.4f} | play {play_rate:.2f} | "
               f"elo {pool.current_elo:.0f} | vs pool {pwr:.2f} | match {mlen:.0f}s", flush=True)
         save_checkpoint(run / "latest.pt", policy, cfg,
-                        {"critic": critic.state_dict(), "opt": opt.state_dict(), "pool": pool,
+                        {"critic": critic.state_dict(), "opt": opt.state_dict(), "pool": vars(pool),
                          "iter": it})
         if (it + 1) % 50 == 0:
             save_checkpoint(run / f"iter{it + 1:05d}.pt", policy, cfg)

@@ -16,6 +16,9 @@ class RandomBot:
         self.play_prob = play_prob
         self.rng = np.random.default_rng(seed)
 
+    def reset(self):
+        pass
+
     def act(self, m: Match, p: int) -> int:
         mask = action_mask(m, p)
         mask[0] = False
@@ -44,6 +47,9 @@ class ScriptedBot:
 
     def __init__(self, seed=None):
         self.rng = random.Random(seed)
+
+    def reset(self):
+        pass
 
     def _action(self, m, p, slot, x, own_y):
         cx, cy = world_to_cell(p, x, _world_y(p, own_y))
