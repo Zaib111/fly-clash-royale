@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fly Clash Royale</title>
+  <title>FlyRoyale</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%AA%B0%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
@@ -12,23 +12,19 @@
 </head>
 <body>
   <header id="topbar">
-    <div class="title">Clash Royale vs. a <span>Fruit Fly</span></div>
+    <div class="title">Fly<span>Royale</span></div>
     <div id="subtitle"></div>
-    <div id="status" class="pill">connecting…</div>
+    <div id="status" class="pill hidden"></div>
   </header>
   <main>
     <section id="game">
       <canvas id="arena"></canvas>
-      <div id="winbar" class="hidden" title="Who's winning (the fly's value network)">
-        <div id="winbar-top"></div><div id="winbar-fill"></div>
-        <b id="winbar-top-n"></b><b id="winbar-bot-n"></b>
-      </div>
+      <div id="winbar" class="hidden" title="Who's winning"><div id="winbar-fill"></div></div>
       <div id="labels"></div>
 
       <div id="hud-top">
-        <div id="opp" class="banner red"><span id="opp-name"></span></div>
-        <div id="timer"><small>Time left:</small><b id="time">3:00</b></div>
-        <div id="x2" class="hidden"><b>x2</b></div>
+        <div id="opp"><i></i><span id="opp-name"></span></div>
+        <div id="timer"><b id="time">3:00</b><span id="x2" class="hidden">2× elixir</span></div>
       </div>
       <div id="crowns">
         <div class="crownbox red"><div class="crown"></div><b id="crowns-top">0</b></div>
@@ -41,18 +37,16 @@
         <div id="elixir-row">
           <div class="drop"><b id="elixir-n">5</b></div>
           <div id="elixir-bar"></div>
-          <div id="me" class="banner blue"><span id="me-name"></span></div>
         </div>
       </div>
 
-      <div id="controls">
-        <button data-cmd="pause" title="Pause (space)">⏯</button>
-        <button data-cmd="slower" title="Slower (-)">−</button>
-        <span id="speed">1x</span>
-        <button data-cmd="faster" title="Faster (+)">+</button>
-        <button data-cmd="restart" title="Restart (R)">↻</button>
+      <button id="menu-btn" title="Game controls">⋯</button>
+      <div id="controls" class="hidden">
+        <button data-cmd="pause">Pause <kbd>space</kbd></button>
+        <div class="speed-row"><button data-cmd="slower" aria-label="Slower">−</button><span id="speed">1x</span><button data-cmd="faster" aria-label="Faster">+</button></div>
+        <button data-cmd="restart">New match <kbd>R</kbd></button>
+        <button data-cmd="view">Reset camera</button>
       </div>
-      <div id="hint">drag to orbit · scroll to zoom · double-click to reset view</div>
 
       <div id="result" class="hidden">
         <div class="result-card">
@@ -64,24 +58,22 @@
     </section>
 
     <aside id="flypanel">
-      <section id="brain-section" class="hidden">
-        <div class="panel-head">
-          <div class="panel-title">THE FLY'S BRAIN</div>
-          <div id="fly-state" class="pill small">idle</div>
-        </div>
-        <div id="brain-wrap">
-          <canvas id="brain"></canvas>
-          <button id="brain-expand" title="Expand the brain (B)">⤢</button>
-          <div id="legend"></div>
-        </div>
-        <div id="stats"></div>
-      </section>
-
       <nav id="tabs">
+        <button data-tab="brain" class="hidden">Brain</button>
         <button data-tab="decision" class="hidden">Decision</button>
         <button data-tab="moves">Moves</button>
         <button data-tab="about">About</button>
       </nav>
+
+      <section class="tab" id="tab-brain">
+        <div id="brain-wrap">
+          <canvas id="brain"></canvas>
+          <button id="brain-expand" title="Expand (B)">⤢</button>
+          <div id="legend"></div>
+        </div>
+        <div id="statline"></div>
+        <div id="last-move"><span class="muted">Waiting for the fly's first move…</span></div>
+      </section>
 
       <section class="tab" id="tab-decision">
         <div id="decision">
@@ -112,7 +104,7 @@
       </section>
 
       <section class="tab" id="tab-about">
-        <h3>A fruit fly's brain, playing Clash Royale</h3>
+        <h3>FlyRoyale</h3>
         <p>The player called <b>Fly</b> is controlled by a simulation of the adult fruit-fly brain wired exactly like
           the real one: 134,181 neurons and 2.7 million connections from the
           <a href="https://flywire.ai" target="_blank" rel="noopener">FlyWire</a> connectome. Which neurons connect, and
@@ -123,8 +115,8 @@
         <p>It learned only by playing against copies of itself (reinforcement learning, PPO): wins are rewarded and
           losses penalised. Training adjusted how strongly each neuron responds, never the wiring. The bots never
           taught it; they only measure it.</p>
-        <p class="muted">Controls: click a card (or 1–4), then the arena. Drag to orbit, scroll to zoom, B to expand
-          the brain, Space to pause, R for a rematch.</p>
+        <p class="muted">Click a card (or press 1–4), then the arena. Drag to orbit, scroll to zoom, double-click to
+          reset the view. B expands the brain, Space pauses, R starts a new match.</p>
         <p class="muted">Unofficial fan project, not affiliated with Supercell. FlyWire data CC BY-NC 4.0.
           <a href="https://github.com/Zaib111/fly-clash-royale" target="_blank" rel="noopener">Source on GitHub</a>.</p>
       </section>
@@ -133,7 +125,7 @@
   <div id="menu" class="overlay hidden">
     <div class="menu-card">
       <div class="menu-fly">🪰</div>
-      <h1>Clash Royale vs. a <span>Fruit Fly</span></h1>
+      <h1>Fly<span>Royale</span></h1>
       <p>A simulation of a real fruit fly's brain (134,181 neurons, wired exactly like the real one) learned to play
         Clash Royale by playing against itself. It runs entirely in your browser.</p>
       <div class="menu-buttons">

@@ -43,7 +43,7 @@ class Viewer:
         self.brain_agent = flies[0] if (flies and show_brain) else None
         width = WIN_W + (PANEL if self.brain_agent else 0)
         self.screen = pygame.display.set_mode((width, WIN_H))
-        pygame.display.set_caption("Fly Clash Royale")
+        pygame.display.set_caption("FlyRoyale")
         self.arena = Arena(TILE, MARGIN, HEADER)
         self.seed = 0
         self.new_match()

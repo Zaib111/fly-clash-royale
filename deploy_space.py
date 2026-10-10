@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
 
 CARD = """---
-title: Fly Clash Royale
+title: FlyRoyale
 emoji: 🪰
 colorFrom: gray
 colorTo: indigo
@@ -27,7 +27,7 @@ license: cc-by-nc-4.0
 short_description: A real fruit-fly brain plays Clash Royale
 ---
 
-# Clash Royale vs. a Fruit Fly
+# FlyRoyale
 
 A simulation of an adult fruit fly's brain, wired exactly like the real one (134,181 neurons and
 2.7M connections from the [FlyWire](https://flywire.ai) connectome), learned to play a Clash Royale-style

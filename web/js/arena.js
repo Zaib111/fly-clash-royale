@@ -190,7 +190,7 @@ export function buildArena(world, A, renderer) {
   const trunk = mat(0x6b4426);
   const leaves = [mat(0x3f8a3a), mat(0x4e9c40), mat(0x357a33)];
   const rock = mat(0x9a9aa4, { roughness: 0.9, flatShading: true });
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 32; i++) {
     let x, y;
     do {
       x = -14 + r() * (A.w + 28);

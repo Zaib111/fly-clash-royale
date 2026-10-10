@@ -1,4 +1,4 @@
-# Fly Clash Royale
+# FlyRoyale
 
 **▶ Play it in your browser: https://huggingface.co/spaces/shahmeer6/fly-clash-royale**
 

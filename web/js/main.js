@@ -86,14 +86,8 @@ canvas.addEventListener('dblclick', fitCamera);
 
 // ------------------------------------------------------------------ static UI
 const portraits = Object.fromEntries(CARDS.map((c) => [c.name, makePortrait(c.name)]));
-const CARD_BG = {
-  Knight: ['#7ea2e0', '#36579a'], Archers: ['#8fcf7a', '#3f7a35'], Giant: ['#e3a96a', '#8a5426'],
-  Goblins: ['#8fd86a', '#3e7d2c'], Musketeer: ['#b38be0', '#5a3290'], MiniPekka: ['#7f97d6', '#283c78'],
-  Fireball: ['#ffb36b', '#b0451b'], Minions: ['#8aa0f2', '#38429c'],
-};
 function cardHTML(c) {
-  const [a, b] = CARD_BG[c.name] || ['#888', '#444'];
-  return `<div class="inner" style="background: radial-gradient(circle at 50% 35%, ${a}, ${b})">
+  return `<div class="inner">
     <img src="${portraits[c.name]}" alt=""><div class="name">${c.name === 'MiniPekka' ? 'Mini P.E.K.K.A' : c.name}</div>
     <div class="cover"></div></div><div class="cost"><b>${c.cost}</b></div>`;
 }
@@ -113,23 +107,19 @@ for (let i = 0; i < 10; i++) {
 }
 const segs = [...$('elixir-bar').children].map((s) => s.firstChild);
 $('opp-name').textContent = info.players[1 - VIEW].name;
-$('me-name').textContent = info.players[VIEW].name;
 const vsFly = flySeats.length > 0;
 if (vsFly) {
   const b = info.brains[flySeats[0]];
-  $('subtitle').textContent = `${b.neurons.toLocaleString()} neurons · ${(b.connections / 1e6).toFixed(1)}M connections · ` +
-    `${(b.synapses / 1e6).toFixed(1)}M synapses · adult Drosophila brain (FlyWire v783)`;
+  $('subtitle').textContent = `a real fruit-fly brain playing Clash Royale · ${b.neurons.toLocaleString()} neurons`;
 } else {
-  $('subtitle').textContent = `${info.players[0].name} vs ${info.players[1].name} — no fly in this match`;
+  $('subtitle').textContent = 'no fly in this match';
 }
-setTimeout(() => { $('hint').style.opacity = 0; }, 7000);
 
 // ------------------------------------------------------------------ brain panel + fly avatar
 let brainView = null;
 const brainSeat = flySeats.length ? flySeats[0] : null;
 if (brainSeat !== null) {
-  $('brain-section').classList.remove('hidden');
-  document.querySelector('[data-tab="decision"]').classList.remove('hidden');
+  for (const t of ['brain', 'decision']) document.querySelector(`[data-tab="${t}"]`).classList.remove('hidden');
   const buf = await transport.brainBuffer(brainSeat);
   brainView = new BrainView($('brain'), buf, info.brains[brainSeat].points);
   const toggleBig = () => { document.body.classList.toggle('brain-big'); fitCamera(); };
@@ -217,7 +207,6 @@ transport.onSnapshot((s) => {
       updateStats(fr, s);
       if (fr.vision) renderVision(fr);
       if (fr.slots) renderFlyHand(fr);
-      flashState('deciding', 'warn');
     }
   }
   if (s.thinking && brainSeat !== null && s.thinking[brainSeat] && s.thinking[brainSeat] !== lastThinking) {
@@ -225,6 +214,7 @@ transport.onSnapshot((s) => {
     renderThinking(lastThinking);
   }
 }, () => { $('status').textContent = 'disconnected'; $('status').className = 'pill'; });
+
 
 function resetMatch(s) {
   matchId = s.match;
@@ -294,7 +284,7 @@ function handleEvent(ev) {
     if (av) {
       av.swoop = { t0: performance.now() / 1000, to: toLocal(A, x, y, 3.4), card: cardSprite(c.name) };
       world.add(av.swoop.card);
-      if (p === brainSeat) flashState(`played ${c.name}`, 'live', 1500);
+      if (p === brainSeat) setLastMove(c, p, x, y);
     }
   }
 }
@@ -350,7 +340,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === `tab-${name}`));
 }
 document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-showTab(brainSeat !== null ? 'decision' : 'moves');
+showTab(brainSeat !== null ? 'brain' : 'moves');
 
 function whereDesc(p, x, y) {
   const own = p === 0 ? y : A.h - y;                       // distance from that player's back wall
@@ -394,8 +384,7 @@ if (info.has_value) $('winbar').classList.remove('hidden');
 function updateWinbar(p) {
   if (p === null || p === undefined) return;
   $('winbar-fill').style.height = `${Math.round(p * 100)}%`;
-  $('winbar-bot-n').textContent = `${Math.round(p * 100)}%`;
-  $('winbar-top-n').textContent = `${Math.round((1 - p) * 100)}%`;
+  $('winbar').title = `${info.players[VIEW].name}: ${Math.round(p * 100)}% to win`;
 }
 
 // ------------------------------------------------------------------ the fly's view and card pick
@@ -495,27 +484,28 @@ function renderFlyHand(fr) {
 // ------------------------------------------------------------------ fly panel text
 function updateStats(fr, s) {
   const b = info.brains[brainSeat];
-  const cells = [
-    [b.neurons.toLocaleString(), 'neurons'],
-    [`${(b.connections / 1e6).toFixed(1)}M`, 'connections'],
-    [s.decisions.toLocaleString(), 'decisions'],
-    [fr.active.toLocaleString(), 'active now'],
-    [fr.active_out.toLocaleString(), 'motor active'],
-    [`${Math.floor(s.t / 60)}:${String(Math.floor(s.t % 60)).padStart(2, '0')}`, 'sim time'],
-  ];
-  $('stats').innerHTML = cells.map(([v, k]) => `<div><b>${v}</b><small>${k}</small></div>`).join('');
+  $('statline').textContent = `${b.neurons.toLocaleString()} neurons · ${fr.active.toLocaleString()} active · ` +
+    `${s.decisions.toLocaleString()} decisions`;
 }
 function renderThinking(list) {
   $('think-list').innerHTML = list.map(([desc, p]) =>
     `<li><i style="width:${Math.round(p * 100)}%"></i><span>${desc}<em>${(p * 100).toFixed(0)}%</em></span></li>`).join('');
 }
-let stateTimer = null;
-function flashState(text, cls, ms = 220) {
-  const el = $('fly-state');
-  el.textContent = text;
-  el.className = `pill small ${cls}`;
-  clearTimeout(stateTimer);
-  stateTimer = setTimeout(() => { el.textContent = 'watching'; el.className = 'pill small'; }, ms);
+// one quiet line under the brain: the fly's most recent card
+function setLastMove(c, p, x, y) {
+  const el = $('last-move');
+  el.replaceChildren();
+  const img = document.createElement('img');
+  img.src = portraits[c.name];
+  img.alt = '';
+  const txt = document.createElement('span');
+  txt.textContent = `${c.name === 'MiniPekka' ? 'Mini P.E.K.K.A' : c.name} · ${whereDesc(p, x, y)}`;
+  const lbl = document.createElement('small');
+  lbl.textContent = 'last move';
+  el.append(img, txt, lbl);
+  el.classList.remove('pulse');
+  void el.offsetWidth;
+  el.classList.add('pulse');
 }
 
 // ------------------------------------------------------------------ human input
@@ -592,7 +582,13 @@ function control(cmd) {
   else if (cmd === 'slower') transport.control('speed', latest.speed / 2);
   else transport.control(cmd);
 }
-document.querySelectorAll('#controls button').forEach((b) => b.addEventListener('click', () => control(b.dataset.cmd)));
+document.querySelectorAll('#controls button').forEach((b) => b.addEventListener('click', () => {
+  if (b.dataset.cmd === 'view') fitCamera();
+  else control(b.dataset.cmd);
+  if (b.dataset.cmd !== 'faster' && b.dataset.cmd !== 'slower') $('controls').classList.add('hidden');
+}));
+$('menu-btn').addEventListener('click', (e) => { e.stopPropagation(); $('controls').classList.toggle('hidden'); });
+document.addEventListener('click', (e) => { if (!$('controls').contains(e.target) && e.target !== $('menu-btn')) $('controls').classList.add('hidden'); });
 $('rematch').addEventListener('click', () => control('restart'));
 window.addEventListener('keydown', (e) => {
   if (e.key >= '1' && e.key <= '4') selectSlot(Number(e.key) - 1);
@@ -821,20 +817,20 @@ function updateAvatars(now, b) {
 
 function updateStatus(b) {
   const st = $('status');
-  if (b.paused) { st.textContent = 'paused'; st.className = 'pill'; }
-  else if (b.done) { st.textContent = 'match over'; st.className = 'pill'; }
-  else if (vsFly && HUMAN !== null) { st.textContent = 'the fly is playing you'; st.className = 'pill live'; }
-  else { st.textContent = b.double ? 'live · double elixir' : 'live'; st.className = 'pill live'; }
+  if (st.textContent !== 'disconnected') {   // only speak up when something is unusual
+    st.textContent = b.paused ? 'paused' : '';
+    st.className = b.paused ? 'pill' : 'pill hidden';
+  }
   $('speed').textContent = `${b.speed}x`;
   if (b.done && renderT >= b.t - 0.05) {
     const r = $('result');
     if (r.classList.contains('hidden')) {
       r.classList.remove('hidden');
       const t = $('result-title');
-      if (b.winner === -1) { t.textContent = 'Draw'; t.style.background = '#444'; }
+      if (b.winner === -1) { t.textContent = 'Draw'; t.style.color = ''; }
       else {
-        t.textContent = `${info.players[b.winner].name} wins!`;
-        t.style.background = teamOf(b.winner) ? 'linear-gradient(#f0525b,#c9232d)' : 'linear-gradient(#4b8cff,#2559c9)';
+        t.textContent = `${info.players[b.winner].name} wins`;
+        t.style.color = teamOf(b.winner) ? 'var(--red)' : 'var(--blue)';
       }
       const n = b.winner === -1 ? 0 : b.crowns[b.winner];
       $('result-crowns').innerHTML = [0, 1, 2].map((i) => `<div class="crown${i < n ? ' on' : ''}"></div>`).join('');
